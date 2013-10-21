@@ -10,6 +10,26 @@ import 'package:logging_handlers/server_logging_handlers.dart';
 void main() {
   Logger.root.onRecord.listen(new PrintHandler());
  
+  group("TLS Server", () {
+    SecureSocket.initialize(database: "pkcert", password: 'dartdart', useBuiltinRoots: false);
+
+    var server;
+    server = new RestfulServer.secure(port: 8443, certificateName: "localhost_cert");
+    server
+      ..onGet("/secure", (request, params) => request.response.write("SECURE"));
+
+    test("TLS GET", () {
+      call("GET","/secure", (resp) {
+        expect(resp.statusCode, equals(HttpStatus.OK));
+        parseBody(resp).then(expectAsync1((value) {
+          expect(value, equals("SECURE"));  
+        }));        
+      }, port:8443);
+    });
+
+    new Timer(new Duration(seconds:1), () => server.close());
+  });
+  
   group("", () {
     var server;
     server = new RestfulServer();
@@ -78,7 +98,7 @@ void main() {
       }));
     });
 
-    test("Post", () {
+    test("Put", () {
       call("PUT","/put", expectAsync1((HttpClientResponse resp) {
         expect(resp.statusCode, equals(HttpStatus.NO_CONTENT));  
       }));
@@ -95,10 +115,10 @@ void main() {
   });
 }
 
-void get(uri, callback) {
+void get(path, callback) {
   HttpClient cl = new HttpClient();
 
-  cl.get("127.0.0.1", 8080, uri).then((HttpClientRequest req) {
+  cl.get("127.0.0.1", 8080, path).then((HttpClientRequest req) {
     return req.close();
   }).then((HttpClientResponse resp) {
     resp.transform(new Utf8DecoderTransformer()).join().then(callback);
@@ -109,10 +129,10 @@ Future<String> parseBody(response) {
   return response.transform(new Utf8DecoderTransformer()).join();
 }
 
-void call(method, uri, callback) {
+void call(method, path, callback, {port:8080}) {
   HttpClient cl = new HttpClient();
 
-  cl.open(method, "127.0.0.1", 8080, uri).then((HttpClientRequest req) {
+  cl.open(method, "127.0.0.1", port, path).then((HttpClientRequest req) {
     return req.close();
   }).then(callback);
 }
