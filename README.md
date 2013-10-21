@@ -25,8 +25,19 @@ server.preProcessor = (request) {
     old(request);
   };
 ```
+HTTPS (SSL/TLS)
+-----------
+Good folks at google decided to go with NSS see (https://developer.mozilla.org/en-US/docs/NSS/Tools) 
+and documentation on SecureSocket.initialize(..)
+Luckily, default tests have a functioning key pair, which have been appropriated for testing needs (test/pkcert)
+```dart
+SecureSocket.initialize(database: "pkcert", password: 'dartdart', useBuiltinRoots: false);
+var server = new RestfulServer.secure(port: 8443, certificateName: "localhost_cert");
+```
 
+Logging
+-------
 To see server messages you need to init logging_handlers
 ```dart
-  Logger.root.onRecord.listen(new PrintHandler());
+Logger.root.onRecord.listen(new PrintHandler());
 ```

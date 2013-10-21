@@ -16,84 +16,89 @@ class RestfulServer {
     request.response.write("No handler for requested resource found");
   });
 
-  List<_Endpoint> _endpoints;
+  List<_Endpoint> _endpoints = [];
   HttpServer _server;
   
-  Function preProcessor;
-  Function postProcessor;
-  Function onError;
+  Function preProcessor = (request){
+    request.response.headers.add(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
+  };
+  
+  Function postProcessor = (request) {};
+  
+  Function onError = (e, request) {
+    request.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+    request.response.write("Unexpected boom");
+  };  
 
   RestfulServer({var host:"127.0.0.1", int port:8080}) {
-    _endpoints = [];
-    
-    preProcessor=(request){
-      request.response.headers.add(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
-    };
-    
-    postProcessor=(request) {};
-    
-    onError = (e, request) {
-      request.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
-      request.response.write("Unexpected boom");
-    }; 
-    
-    HttpServer.bind(host, port).then((HttpServer server) {
-      info("Server started on: $host:$port");  
-      
-      _server = server;
-
-      server.listen((HttpRequest request) {
-          Stopwatch sw = new Stopwatch();
-          
-          sw.start();
-          try {
-            preProcessor(request);
-            
-            var endpoint = _endpoints.firstWhere((_Endpoint e) => e._canService(request), orElse:() => NOT_FOUND);
-    
-            var match = endpoint._uriMatch.firstMatch(request.uri.path);
-     
-            var uriParams = {};
-            for(var i = 1; i <= match.groupCount; i++) {
-              uriParams[endpoint._uriParamNames[i-1]]=match.group(i);
-            }
-    
-            debug("invoking ${endpoint.uri} with params $uriParams");
-            
-            if(endpoint._parseBody) {
-              request.transform(new Utf8DecoderTransformer()).join().then((body) {
-                endpoint.handler(request, uriParams, body);
-                
-                postProcessor(request);
-                
-                request.response.close();
-                
-                sw.stop();
-                
-                info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
-                
-              }); 
-            } else {
-                endpoint.handler(request, uriParams);
-                
-                postProcessor(request);
-                
-                request.response.close();
-                
-                sw.stop();
-                
-                info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
-            }
-        } catch(e, trace) {
-          error("Server error $e \n $trace");
-          onError(e, request);
-          
-          request.response.close();
-        }
-        });
-      });
+    HttpServer.bind(host, port).then(_logic);
   }
 
+  RestfulServer.secure({var host:"127.0.0.1", int port:8080, String certificateName}) {
+    HttpServer.bindSecure(host, port, certificateName: certificateName).then(_logic);
+  }
+
+  
+  /**
+   *   
+   */
+  void _logic(HttpServer server) {
+    info("Server started...");  
+    
+    _server = server;
+
+    server.listen((HttpRequest request) {
+      Stopwatch sw = new Stopwatch();
+      
+      sw.start();
+      
+      try {
+        preProcessor(request);
+        
+        var endpoint = _endpoints.firstWhere((_Endpoint e) => e._canService(request), orElse:() => NOT_FOUND);
+        
+        var match = endpoint._uriMatch.firstMatch(request.uri.path);
+        
+        var uriParams = {};
+        for(var i = 1; i <= match.groupCount; i++) {
+          uriParams[endpoint._uriParamNames[i-1]]=match.group(i);
+        }
+        
+        debug("invoking ${endpoint.uri} with params $uriParams");
+        
+        if(endpoint._parseBody) {
+          request.transform(new Utf8DecoderTransformer()).join().then((body) {
+            endpoint.handler(request, uriParams, body);
+            
+            postProcessor(request);
+            
+            request.response.close();
+            
+            sw.stop();
+            
+            info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
+            
+          }); 
+        } else {
+          endpoint.handler(request, uriParams);
+          
+          postProcessor(request);
+          
+          request.response.close();
+          
+          sw.stop();
+          
+          info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
+        }
+      } catch(e, trace) {
+        error("Server error $e \n $trace");
+        onError(e, request);
+        
+        request.response.close();
+      }
+    });
+  }
+  
   void close() {
     _server.close().then((server) => info("Server is now stopped"));  
     
@@ -202,5 +207,5 @@ class _Endpoint {
 
 class ContentTypes {
   static final APPLICATION_JSON =  new ContentType("application", "json", charset: "utf-8");
-  static final TEXT_PLAIN =  new ContentType("plain", "text", charset: "utf-8");
+  static final TEXT_PLAIN =  new ContentType("text", "plain", charset: "utf-8");
 }
