@@ -1,5 +1,5 @@
 import 'package:unittest/unittest.dart';
-import '../restful/restful_server.dart';
+import '../lib/dartrs.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:utf';
