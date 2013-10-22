@@ -1,4 +1,4 @@
-library restful;
+library dartrs;
 
 import "dart:io";
 import 'dart:utf';
