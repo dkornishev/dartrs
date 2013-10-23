@@ -53,5 +53,17 @@ OPTIONS /
 
 Annotations/Scanner
 -------------------
-Jaxrs-style annotations and bootstrap via a library scanner was planned, but currently
-dart has no way to access metadata at runtime via reflection https://code.google.com/p/dart/issues/detail?id=6614
+Jaxrs-style annotations and bootstrap via a library scanner was planned:
+```dart
+@Path("/hello")
+@GET
+void echo(request, params) {
+  request.response.write("hi");
+}
+
+var server = new RestfulServer.fromScan(currentMirrorSystem());
+
+```
+
+but currently
+dart has no way to access metadata at runtime via reflection (https://code.google.com/p/dart/issues/detail?id=6614)
