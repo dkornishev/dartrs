@@ -18,12 +18,12 @@ void main() {
     server..onGet("/secure", (request, params) => request.response.write("SECURE"));
 
     test("TLS GET", () {
-      getUri(Uri.parse("https://127.0.0.1:8443/secure"), (resp) {
+      getUri(Uri.parse("https://127.0.0.1:8443/secure"), expectAsync1((resp) {
         expect(resp.statusCode, equals(HttpStatus.OK));
         parseBody(resp).then(expectAsync1((value) {
           expect(value, equals("SECURE"));
         }));
-      });
+      }));
     });
 
     new Timer(new Duration(seconds:1), () => server.close());
@@ -43,27 +43,27 @@ void main() {
 
 //***
     test("Not Found", () {
-      call("GET", "/not_there", (resp) {
+      call("GET", "/not_there", expectAsync1((resp) {
         expect(resp.statusCode, equals(HttpStatus.NOT_FOUND));
-      });
+      }));
     });
 
     test("GET", () {
-      call("GET", "/echo", (resp) {
+      call("GET", "/echo", expectAsync1((resp) {
         expect(resp.statusCode, equals(HttpStatus.OK));
         parseBody(resp).then(expectAsync1((value) {
           expect(value, equals("ECHO"));
         }));
-      });
+      }));
     });
 
     test("Get with Uri params", () {
-      call("GET", "/api/go/home", (resp) {
+      call("GET", "/api/go/home", expectAsync1((resp) {
         expect(resp.statusCode, equals(HttpStatus.OK));
         parseBody(resp).then(expectAsync1((value) {
           expect(value, equals("{arg1: go, arg2: home}"));
         }));
-      });
+      }));
     });
 
     test("Head", () {
