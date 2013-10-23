@@ -50,3 +50,8 @@ By default the server will list all registered endpoints if you issue:
 ```
 OPTIONS /
 ```
+
+Annotations/Scanner
+-------------------
+Jaxrs-style annotations and bootstrap via a library scanner was planned, but currently
+dart has no way to access metadata at runtime via reflection https://code.google.com/p/dart/issues/detail?id=6614
