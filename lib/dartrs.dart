@@ -47,6 +47,12 @@ class RestfulServer {
     
     _server = server;
 
+    this.onOptions("/", (request, params) {
+      _endpoints.forEach((_Endpoint e) {
+        request.response.write("${e.method} ${e.uri}\n");
+      });
+    });
+
     server.listen((HttpRequest request) {
       Stopwatch sw = new Stopwatch();
       
