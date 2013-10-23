@@ -43,3 +43,10 @@ To see server messages you need to init logging_handlers
 ```dart
 Logger.root.onRecord.listen(new PrintHandler());
 ```
+
+Default Endpoints
+-----------------
+By default the server will list all registered endpoints if you issue:
+```
+OPTIONS /
+```
