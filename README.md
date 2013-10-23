@@ -1,6 +1,8 @@
 Dart Restful Webserver 
 ======================
 
+[![Build Status](https://drone.io/github.com/dkornishev/dartrs/status.png)](https://drone.io/github.com/dkornishev/dartrs/latest)
+
 A server to make development of restful webservices easy and fun
 
 Getting Started
