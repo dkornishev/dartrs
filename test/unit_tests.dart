@@ -26,7 +26,7 @@ void main() {
       }));
     });
 
-    new Timer(new Duration(seconds:1), () => server.close());
+    new Timer(new Duration(seconds:1), () => secureServer.close());
   });
 
   group("", () {
