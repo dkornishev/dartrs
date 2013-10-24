@@ -5,6 +5,7 @@ import 'dart:utf';
 import "dart:mirrors";
 
 import "package:logging_handlers/server_logging_handlers.dart";
+import 'dart:async';
 
 /**
  * Restful Server implementation
@@ -72,21 +73,17 @@ class RestfulServer {
         
         debug("invoking ${endpoint.uri} with params $uriParams");
         
+        Future future = new Future.sync(() => null);
         if(endpoint._parseBody) {
-          request.transform(new Utf8DecoderTransformer()).join().then((body) {
+          future = request.transform(new Utf8DecoderTransformer()).join();
+        }
+        
+        future.then((body) {
+          if(body != null) {
             endpoint.handler(request, uriParams, body);
-            
-            postProcessor(request);
-            
-            request.response.close();
-            
-            sw.stop();
-            
-            info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
-            
-          }); 
-        } else {
-          endpoint.handler(request, uriParams);
+          } else {
+            endpoint.handler(request, uriParams);
+          }
           
           postProcessor(request);
           
@@ -95,7 +92,8 @@ class RestfulServer {
           sw.stop();
           
           info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
-        }
+          
+        }); 
       } catch(e, trace) {
         error("Server error $e \n $trace");
         onError(e, request);
