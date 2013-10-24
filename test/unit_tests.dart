@@ -13,9 +13,9 @@ void main() {
   group("TLS Server", () {
     SecureSocket.initialize(database: "test/pkcert", password: 'dartdart', useBuiltinRoots: false);
 
-    var server;
-    server = new RestfulServer.secure(port: 8443, certificateName: "localhost_cert");
-    server..onGet("/secure", (request, params) => request.response.write("SECURE"));
+    var secureServer;
+    secureServer = new RestfulServer.secure(port: 8443, certificateName: "localhost_cert");
+    secureServer..onGet("/secure", (request, params) => request.response.write("SECURE"));
 
     test("TLS GET", () {
       getUri(Uri.parse("https://127.0.0.1:8443/secure"), expectAsync1((resp) {
