@@ -1,9 +1,9 @@
 library dartrs_example;
 
-import "dart:mirrors";
-import "dart:json" as json;
-import '../lib/dartrs.dart';
-import "package:logging/logging.dart";
+import 'dart:mirrors';
+import 'dart:convert' show JSON;
+import 'package:dartrs/dartrs.dart';
+import 'package:logging/logging.dart';
 import 'package:logging_handlers/server_logging_handlers.dart';
 
 
@@ -21,7 +21,7 @@ void main() {
   server = new RestfulServer();
   server
   ..onPost("/cmd/{command}", (request, uriParams, body) {
-    var parsed = json.parse(body);
+    var parsed = JSON.decode(body);
     var result = currentMirrorSystem().findLibrary(new Symbol("dartrs_example")).first.invoke(new Symbol(uriParams["command"]), [parsed]);
     request.response.write(result.reflectee);
   });
