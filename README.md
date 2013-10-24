@@ -12,6 +12,13 @@ Getting Started
 var server = new RestfulServer();
 server
   ..onGet("/echo", (request, params) => request.response.write("ECHO"))
+  ..listen();
+```
+
+or
+
+```dart
+startrs().then((server) => server.onGet("/echo", (request, params) => request.response.write("ECHO")));
 ```
 
 POST/PUT/PATCH will handle parsing the body if provided callback has three parameters

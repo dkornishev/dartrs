@@ -17,13 +17,13 @@ import 'package:logging_handlers/server_logging_handlers.dart';
 void main() {
   Logger.root.onRecord.listen(new PrintHandler());
 
-  var server;
-  server = new RestfulServer();
-  server
-  ..onPost("/cmd/{command}", (request, uriParams, body) {
-    var parsed = JSON.decode(body);
-    var result = currentMirrorSystem().findLibrary(new Symbol("dartrs_example")).first.invoke(new Symbol(uriParams["command"]), [parsed]);
-    request.response.write(result.reflectee);
+  startrs().then((RestfulServer server) {
+    server
+    ..onPost("/cmd/{command}", (request, uriParams, body) {
+      var parsed = JSON.decode(body);
+      var result = currentMirrorSystem().findLibrary(new Symbol("dartrs_example")).first.invoke(new Symbol(uriParams["command"]), [parsed]);
+      request.response.write(result.reflectee);
+    });
   });
 }
 
