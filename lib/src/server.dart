@@ -5,12 +5,12 @@ part of dartrs;
  */
 class RestfulServer {
 
-  static final NOT_FOUND = new _Endpoint("", "", (HttpRequest request, params) {
+  static final NOT_FOUND = new Endpoint("", "", (HttpRequest request, params) {
     request.response.statusCode = HttpStatus.NOT_FOUND;
     request.response.write("No handler for requested resource found");
   });
 
-  List<_Endpoint> _endpoints = [];
+  List<Endpoint> _endpoints = [];
   HttpServer _server;
   
   Function preProcessor = (request){
@@ -23,8 +23,28 @@ class RestfulServer {
     request.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
   };  
 
-  RestfulServer();
+  /**
+   * Creates a new [RestfulServer]. Start the server afterwards with
+   * `listen()` or `listenSecure()`.
+   * Also registers the default OPTIONS endpoint.
+   */
+  RestfulServer() {
+    // Register default OPTIONS handler.
+//    this.onOptions("/", (request, params) {
+//      _endpoints.forEach((Endpoint e) {
+//        request.response.writeln("$e");
+//      });
+//    });
+    new Endpoint.root("OPTIONS", (request, params) {
+      _endpoints.forEach((Endpoint e) {
+        request.response.writeln("$e");
+      });
+    });
+  }
   
+  /**
+   * Starts this server on the given host and port.
+   */
   Future<RestfulServer> listen({String host:"127.0.0.1", int port:8080}) {
     return HttpServer.bind(host, port).then((server) {
       info("Server listening on $host:$port...");  
@@ -33,6 +53,9 @@ class RestfulServer {
     });
   }
   
+  /**
+   * Starts this server on the given host and port (in secure mode).
+   */
   Future<RestfulServer> listenSecure({String host:"127.0.0.1", int port:8443, String certificateName}) {
     return HttpServer.bindSecure(host, port, certificateName: certificateName).then((server) {
       info("Server listening on $host:$port (secured)...");  
@@ -47,70 +70,48 @@ class RestfulServer {
   void _logic(HttpServer server) {
     _server = server;
 
-    this.onOptions("/", (request, params) {
-      _endpoints.forEach((_Endpoint e) {
-        request.response.write("${e.method} ${e.uri}\n");
-      });
-    });
-
     server.listen((HttpRequest request) {
-      Stopwatch sw = new Stopwatch();
+      Stopwatch sw = new Stopwatch()..start();
       
-      sw.start();
-      
-      try {
+      // Wrap to avoid mixing of sync and async errors..
+      new Future.sync(() {
+        // Pre-process
         preProcessor(request);
         
-        var endpoint = _endpoints.firstWhere((_Endpoint e) => e._canService(request), orElse:() => NOT_FOUND);
+        // Find and endpoint
+        var endpoint = _endpoints.firstWhere((Endpoint e) => e.canService(request), orElse:() => NOT_FOUND);
+        info("Match: ${request.method}:${request.uri} to ${endpoint}");
         
-        var match = endpoint._uriMatch.firstMatch(request.uri.path);
-        
-        var uriParams = {};
-        for(var i = 1; i <= match.groupCount; i++) {
-          uriParams[endpoint._uriParamNames[i-1]]=match.group(i);
-        }
-        
-        debug("invoking ${endpoint.uri} with params $uriParams");
-        
-        if(endpoint._parseBody) {
-          request.transform(new Utf8DecoderTransformer()).join().then((body) {
-            endpoint.handler(request, uriParams, body);
-            
-            postProcessor(request);
-            
-            request.response.close();
-            
-            sw.stop();
-            
-            info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
-            
-          }); 
-        } else {
-          endpoint.handler(request, uriParams);
-          
-          postProcessor(request);
-          
-          request.response.close();
-          
-          sw.stop();
-          
-          info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
-        }
-      } catch(e, trace) {
-        error("Server error $e \n $trace");
+        // Then post-process
+        endpoint.service(request).then((_) => postProcessor(request));
+      })
+      // If an error occurred, handle it.
+      .catchError((e, stack) {
+        error("Server error: $e \n $stack");
         onError(e, request);
-        
+        })
+      // At the end, always close the request's response and log the request time.
+      .whenComplete(() {
         request.response.close();
-      }
+        sw.stop();
+        info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
+        });
     });
   }
   
+  /**
+   * Shuts down this server.
+   */
   Future close() {
     return _server.close().then((server) => info("Server is now stopped"));  
   }
   
+  /**
+   * Services GET calls
+   * [handler] should take (HttpRequest, Map)
+   */
   void onGet(String uri, handler(HttpRequest req, Map uriParams)) {
-    _endpoints.add(new _Endpoint("GET", uri, handler));
+    _endpoints.add(new Endpoint("GET", uri, handler));
 
     info("Added endpoint GET:$uri");
   }
@@ -122,7 +123,7 @@ class RestfulServer {
    * request body will be parsed and passed in 
    */
   void onPost(String uri, handler) {
-    _endpoints.add(new _Endpoint("POST", uri, handler));
+    _endpoints.add(new Endpoint("POST", uri, handler));
 
     info("Added endpoint POST:$uri");
   }
@@ -134,7 +135,7 @@ class RestfulServer {
    * request body will be parsed and passed in 
    */
   void onPut(String uri, handler) {
-    _endpoints.add(new _Endpoint("PUT", uri, handler));
+    _endpoints.add(new Endpoint("PUT", uri, handler));
 
     info("Added endpoint PUT:$uri");
   }
@@ -146,25 +147,25 @@ class RestfulServer {
    * request body will be parsed and passed in 
    */
   void onPatch(String uri, handler) {
-    _endpoints.add(new _Endpoint("PATCH", uri, handler));
+    _endpoints.add(new Endpoint("PATCH", uri, handler));
 
     info("Added endpoint Patch:$uri");
   }
   
   void onDelete(String uri, handler(HttpRequest req, Map uriParams)) {
-    _endpoints.add(new _Endpoint("DELETE", uri, handler));
+    _endpoints.add(new Endpoint("DELETE", uri, handler));
 
     info("Added endpoint DELETE:$uri");
   }
 
   void onHead(String uri, handler(HttpRequest req, Map uriParams)) {
-    _endpoints.add(new _Endpoint("HEAD", uri, handler));
+    _endpoints.add(new Endpoint("HEAD", uri, handler));
 
     info("Added endpoint HEAD:$uri");
   }
 
   void onOptions(String uri, handler(HttpRequest req, Map uriParams)) {
-    _endpoints.add(new _Endpoint("OPTIONS", uri, handler));
+    _endpoints.add(new Endpoint("OPTIONS", uri, handler));
 
     info("Added endpoint OPTIONS:$uri");
   }
@@ -173,41 +174,83 @@ class RestfulServer {
 /**
  * Holds information about a restful endpoint
  */
-class _Endpoint {
+class Endpoint {
 
-  static final URI_FRAGMENT = new RegExp(r"{(\w+?)}");
+  static final URI_PARAM = new RegExp(r"{(\w+?)}");
 
-  String method;
+  final String _method, _path;
 
-  String uri;
-
-  Function handler;
+  Function _handler;
 
   RegExp _uriMatch;
-
   List _uriParamNames;
   
   bool _parseBody;
 
-  _Endpoint(this.method, this.uri, this.handler) {
+  /**
+   * Creates a new endpoint.
+   */
+  Endpoint(String method, this._path, this._handler): this._method = method.toUpperCase() {
     _uriParamNames = [];
-
-    String regexp = uri.splitMapJoin(URI_FRAGMENT, onMatch: (Match m) {
+    
+    String regexp = _path.replaceAllMapped(URI_PARAM, (Match m) {
       _uriParamNames.add(m.group(1));
       return r"(\w+)";
     });
-
-    _uriMatch = new RegExp(regexp);
     
-    _parseBody = reflect(handler).function.parameters.length>2;
+    _uriMatch = new RegExp(regexp);
+    _parseBody = _hasMoreThan2Parameters(_handler);
+  }
+  
+  /**
+   * Creates an endpoint for the root path.
+   * Matches one `/` or an empty path.
+   */
+  Endpoint.root(String method, this._handler):
+    this._method = method.toUpperCase(),
+    this._path = "/",
+    this._uriMatch = new RegExp(r'(^$|^(/)$)') {
+    _parseBody = _hasMoreThan2Parameters(_handler);
+  }
+  
+  bool _hasMoreThan2Parameters(handler) {
+    return (reflect(handler) as ClosureMirror).function.parameters.length>2;
   }
 
   /**
    *  Replies if this endpoint can service incoming request
    */
-  bool _canService(HttpRequest req) {
-    return method == req.method.toUpperCase() && _uriMatch.hasMatch(req.uri.path);
+  bool canService(HttpRequest req) {
+    return _method == req.method.toUpperCase() && _uriMatch.hasMatch(req.uri.path);
   }
+  
+  Future service(HttpRequest req) {
+    // Wrap in Future.sync() to avoid mixing of sync and async errors.
+    return new Future.sync(() {
+      // Extract URI params   
+      var match = _uriMatch.firstMatch(req.uri.path);
+  
+      var uriParams = {};
+      for(var i = 0; i < match.groupCount; i++) {
+        uriParams[_uriParamNames[i]]=match.group(i+1);
+      }
+      
+      info("Got params: $uriParams");
+      
+      // Handle request
+      Future future = _parseBody ? req.transform(new Utf8DecoderTransformer()).join() : new Future.sync(() => null);
+    
+      future.then((body) {
+        if(body != null) {
+          _handler(req, uriParams, body); // Could throw
+        } else {
+          _handler(req, uriParams); // Could throw
+        }      
+      });
+    });
+  }
+  
+  String toString() => '$_method $_path';
 }
 
 class ContentTypes {
