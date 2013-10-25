@@ -13,12 +13,29 @@ class RestfulServer {
   List<Endpoint> _endpoints = [];
   HttpServer _server;
   
-  Function preProcessor = (request){
+  /**
+   * The global pre-processor.
+   * 
+   * Currently this method has to execute synchronously and should not
+   * return a future.
+   */
+  Function preProcessor = (request) {
     request.response.headers.add(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
   };
   
+  /**
+   * The global post-processor. Note that you should not try to modify
+   * immutable headers here, which is the case if any output has already
+   * been written to the response.
+   * 
+   * Currently this method has to execute synchronously and should not
+   * return a future.
+   */
   Function postProcessor = (request) {};
   
+  /**
+   * The global error handler.
+   */
   Function onError = (e, request) {
     request.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
     request.response.writeln(e.toString());
@@ -30,17 +47,13 @@ class RestfulServer {
    * Also registers the default OPTIONS endpoint.
    */
   RestfulServer() {
-    // Register default OPTIONS handler.
-//    this.onOptions("/", (request, params) {
-//      _endpoints.forEach((Endpoint e) {
-//        request.response.writeln("$e");
-//      });
-//    });
-    new Endpoint.root("OPTIONS", (request, params) {
+    var endpoint = new Endpoint.root("OPTIONS", (request, params) {
       _endpoints.forEach((Endpoint e) {
         request.response.writeln("$e");
       });
     });
+    
+    _endpoints.add(endpoint);
   }
   
   /**
@@ -184,7 +197,7 @@ class Endpoint {
   Function _handler;
 
   RegExp _uriMatch;
-  List _uriParamNames;
+  List _uriParamNames = [];
   
   bool _parseBody;
 
@@ -228,12 +241,14 @@ class Endpoint {
   Future service(HttpRequest req) {
     // Wrap in Future.sync() to avoid mixing of sync and async errors.
     return new Future.sync(() {
-      // Extract URI params   
-      var match = _uriMatch.firstMatch(req.uri.path);
-  
+      // Extract URI params
       var uriParams = {};
-      for(var i = 0; i < match.groupCount; i++) {
-        uriParams[_uriParamNames[i]]=match.group(i+1);
+      if (_uriParamNames.isNotEmpty) {
+        var match = _uriMatch.firstMatch(req.uri.path);
+        for(var i = 0; i < match.groupCount; i++) {
+          String group = match.group(i+1);
+          uriParams[_uriParamNames[i]] = group;
+        }
       }
       
       debug("Got params: $uriParams");
