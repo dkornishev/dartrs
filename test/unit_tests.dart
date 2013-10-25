@@ -11,7 +11,7 @@ void main() {
   Logger.root.onRecord.listen(new PrintHandler());
 
   group("TLS Server", () {
-    SecureSocket.initialize(database: "pkcert", password: 'dartdart', useBuiltinRoots: false);
+    SecureSocket.initialize(database: "test/pkcert", password: 'dartdart', useBuiltinRoots: false);
 
     var secureServer;
     secureServer = new RestfulServer.secure(port: 8443, certificateName: "localhost_cert");
