@@ -21,6 +21,7 @@ class RestfulServer {
   
   Function onError = (e, request) {
     request.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+    request.response.writeln(e.toString());
   };  
 
   /**
@@ -83,7 +84,7 @@ class RestfulServer {
         info("Match: ${request.method}:${request.uri} to ${endpoint}");
         
         // Then post-process
-        endpoint.service(request).then((_) => postProcessor(request));
+        return endpoint.service(request).then((_) => postProcessor(request));
       })
       // If an error occurred, handle it.
       .catchError((e, stack) {
@@ -235,12 +236,12 @@ class Endpoint {
         uriParams[_uriParamNames[i]]=match.group(i+1);
       }
       
-      info("Got params: $uriParams");
+      debug("Got params: $uriParams");
       
       // Handle request
       Future future = _parseBody ? req.transform(new Utf8DecoderTransformer()).join() : new Future.sync(() => null);
     
-      future.then((body) {
+      return future.then((body) {
         if(body != null) {
           _handler(req, uriParams, body); // Could throw
         } else {
