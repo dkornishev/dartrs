@@ -1,8 +1,8 @@
-import 'package:unittest/unittest.dart';
-import '../lib/dartrs.dart';
-import 'dart:async';
 import 'dart:io';
-import 'dart:utf';
+import 'dart:async' show Future, Timer;
+import 'package:utf/utf.dart' show Utf8DecoderTransformer;
+import 'package:dartrs/dartrs.dart';
+import 'package:unittest/unittest.dart';
 import "package:logging/logging.dart";
 import 'package:logging_handlers/server_logging_handlers.dart';
 
@@ -11,7 +11,7 @@ void main() {
   Logger.root.onRecord.listen(new PrintHandler());
 
   group("TLS Server", () {
-    SecureSocket.initialize(database: "test/pkcert", password: 'dartdart', useBuiltinRoots: false);
+    SecureSocket.initialize(database: "pkcert", password: 'dartdart', useBuiltinRoots: false);
 
     var secureServer;
     secureServer = new RestfulServer.secure(port: 8443, certificateName: "localhost_cert");
