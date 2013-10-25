@@ -115,6 +115,15 @@ void main() {
         }));
       });
   
+      test("Options Default", () {
+        call("OPTIONS", "/", expectAsync1((HttpClientResponse resp) {
+          parseBody(resp).then(expectAsync1((value) {
+            expect(resp.statusCode, equals(HttpStatus.OK));
+            expect(value, contains("GET /echo"));
+          }));
+        }));
+      });
+      
       test("Delete", () {
         call("DELETE", "/delete", expectAsync1((HttpClientResponse resp) {
           expect(resp.statusCode, equals(HttpStatus.NO_CONTENT));
