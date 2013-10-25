@@ -2,6 +2,7 @@
 .project
 pubspec.lock
 .buildlog
+.idea
 
 # Symlinks #
 packages
