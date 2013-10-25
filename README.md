@@ -36,6 +36,11 @@ Luckily, default tests have a functioning key pair, which have been appropriated
 SecureSocket.initialize(database: "pkcert", password: 'dartdart', useBuiltinRoots: false);
 var server = new RestfulServer.secure(port: 8443, certificateName: "localhost_cert");
 ```
+OR by scanning for annotated methods
+```dart
+SecureSocket.initialize(database: "pkcert", password: 'dartdart', useBuiltinRoots: false);
+var server = new RestfulServer.fromScanSecure(port: 8443, certificateName: "localhost_cert");
+```
 
 Logging
 -------
@@ -53,7 +58,7 @@ OPTIONS /
 
 Annotations/Scanner
 -------------------
-Jaxrs-style annotations and bootstrap via a library scanner was planned:
+Jaxrs-style annotations and bootstrap via a library scanner:
 ```dart
 @Path("/hello")
 @GET
@@ -61,9 +66,5 @@ void echo(request, params) {
   request.response.write("hi");
 }
 
-var server = new RestfulServer.fromScan(currentMirrorSystem());
-
+var server = new RestfulServer.fromScan();
 ```
-
-but currently
-dart has no way to access metadata at runtime via reflection (https://code.google.com/p/dart/issues/detail?id=6614)

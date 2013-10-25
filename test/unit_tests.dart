@@ -6,6 +6,8 @@ import 'package:unittest/unittest.dart';
 import "package:logging/logging.dart";
 import 'package:logging_handlers/server_logging_handlers.dart';
 
+import "annotated_methods.dart";
+
 
 void main() {
   Logger.root.onRecord.listen(new PrintHandler());
@@ -29,7 +31,7 @@ void main() {
     new Timer(new Duration(seconds:1), () => secureServer.close());
   });
 
-  group("", () {
+  group("Base", () {
     var server;
     server = new RestfulServer();
     server..onGet("/echo", (request, params) => request.response.write("ECHO"))..onGet("/api/{arg1}/{arg2}", (request, params) => request.response.write(params))..onHead("/head", (request, params) => request.response.headers.add("X-Test", "SUCCESS"))..onOptions("/options", (request, uriParams) => request.response.headers.add("X-Test-Options", "SUCCESS"))..onDelete("/delete", (request, uriParams) => request.response.statusCode = HttpStatus.NO_CONTENT)..onPatch("/patch", (request, uriParams, body) => request.response.statusCode = HttpStatus.NO_CONTENT)..onPost("/post", (request, uriParams, body) => request.response.statusCode = HttpStatus.CREATED)..onPut("/put", (request, uriParams, body) => request.response.statusCode = HttpStatus.NO_CONTENT);
@@ -103,6 +105,37 @@ void main() {
     });
 
 
+    new Timer(new Duration(seconds:1), () => server.close());
+  });
+  
+  group("Scanner", () {
+    var server = new RestfulServer.fromScan(port: 8081);
+    
+    test("Not Found", () {
+      call("GET", "/scan/not_there", expectAsync1((resp) {
+        expect(resp.statusCode, equals(HttpStatus.NOT_FOUND));
+      }), port: 8081);
+    });
+    
+    test("GET", () {
+      call("GET", "/scan/root", expectAsync1((resp) {
+        expect(resp.statusCode, equals(HttpStatus.OK));
+      }), port: 8081);
+    });
+    
+    test("Post", () {
+      call("POST", "/scan/post", expectAsync1((HttpClientResponse resp) {
+        expect(resp.statusCode, equals(HttpStatus.CREATED));
+      }), port: 8081);
+    });
+    
+    test("Delete", () {
+      call("DELETE", "/scan/delete", expectAsync1((HttpClientResponse resp) {
+        expect(resp.statusCode, equals(HttpStatus.NO_CONTENT));
+      }));
+    });
+
+    
     new Timer(new Duration(seconds:1), () => server.close());
   });
 }

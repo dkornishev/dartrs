@@ -32,25 +32,50 @@ class RestfulServer {
     HttpServer.bindSecure(host, port, certificateName: certificateName).then(_logic);
   }
   
-  RestfulServer.fromScan({MirrorSystem mirrors}) {
-    if(mirrors == null) {
-      mirrors = currentMirrorSystem();  
-    }
-    
-    currentMirrorSystem().libraries.forEach((_, LibraryMirror lib) {
-      lib.functions.values.forEach((MethodMirror method) {
-        method.metadata.forEach((InstanceMirror im) {
-          print(im);  
-          
-          if(identical(im.reflectee, GET)) {
-            print("УРА");   
-            print(method);
-          }
-        });
-      });
-    });
+  RestfulServer.fromScan({var host:"127.0.0.1", int port:8080}) {
+    _scanInit();
+    HttpServer.bind(host, port).then(_logic);
   }
 
+  RestfulServer.fromScanSecure({var host:"127.0.0.1", int port:8080, String certificateName, MirrorSystem mirrors}) {
+    _scanInit();
+    HttpServer.bindSecure(host, port, certificateName: certificateName).then(_logic);
+  }
+
+
+  void _scanInit() {
+    var mirrors = currentMirrorSystem();
+    mirrors.libraries.forEach((_, LibraryMirror lib) {
+      lib.functions.values.forEach((MethodMirror method) {
+        
+        var verb = null;
+        var path = null;
+        method.metadata.forEach((InstanceMirror im) {
+          
+          if(im.reflectee is _HttpMethod) {
+            verb = im.reflectee.name;
+          }
+          
+          if(im.reflectee is Path) {
+            path = im.reflectee.path;
+          }
+        });
+        
+        if(verb != null && path !=null) {
+          if(method.parameters.length == 2) {
+            _endpoints.add(new _Endpoint(verb, path, (request, uriParams)=>lib.invoke(method.simpleName, [request, uriParams]))); 
+            info("Added endpoint $verb:$path");
+          } else if(method.parameters.length == 3) {
+            _endpoints.add(new _Endpoint(verb, path, (request, uriParams, body)=>lib.invoke(method.simpleName, [request, uriParams, body]))); 
+            info("Added endpoint $verb:$path");
+          } else {
+            error("Not adding annotated method ${method.simpleName} as it has wrong number of arguments (Must be 2 or 3)");  
+          }
+        }
+      });
+    });
+
+  }
   
   /**
    *   
