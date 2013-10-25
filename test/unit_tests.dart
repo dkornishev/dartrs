@@ -5,11 +5,46 @@ import 'package:dartrs/dartrs.dart';
 import 'package:unittest/unittest.dart';
 import 'package:logging/logging.dart';
 import 'package:logging_handlers/server_logging_handlers.dart';
+import 'package:unittest/mock.dart';
 
+class MockHttpRequest extends Mock implements HttpRequest {
+  MockHttpRequest(String method, String uri) {
+    when(callsTo('get method')).alwaysReturn(method);
+    when(callsTo('get uri')).alwaysReturn(Uri.parse(uri));
+  }
+}
+class MockHttpResponse extends Mock implements HttpResponse {}
 
 void main() {
   Logger.root.onRecord.listen(new PrintHandler());
+  
+  group("Endpoint", () {
+    test("Match Simple", () {
+      Endpoint e = new Endpoint("get", "/test", (_) => null);
+      var req = new MockHttpRequest("GET", "http://localhost/test");
+      expect(e.canService(req), isTrue);
+      
+      req = new MockHttpRequest("GET", "http://localhost/test/another");
+      expect(e.canService(req), isTrue);
+      
+      e = new Endpoint("get", "/test", (_) => null);
+      req = new MockHttpRequest("GET", "http://localhost/");
+      expect(e.canService(req), isFalse);
+    });
     
+    test("Match Root", () {
+      Endpoint e = new Endpoint.root("get", (_) => null);
+      var req = new MockHttpRequest("GET", "http://localhost/");
+      expect(e.canService(req), isTrue);
+      
+      req = new MockHttpRequest("GET", "http://localhost");
+      expect(e.canService(req), isTrue);
+      
+      req = new MockHttpRequest("GET", "http://localhost/test");
+      expect(e.canService(req), isFalse);
+    });
+  });
+  
   group("TLS Server", () {
     SecureSocket.initialize(database: "pkcert", password: 'dartdart', useBuiltinRoots: false);
     
@@ -126,10 +161,10 @@ void main() {
   });
 }
 
-void get(path, callback) {
+void get(path, callback, {host:"127.0.0.1", port:8080}) {
   HttpClient cl = new HttpClient();
 
-  cl.get("127.0.0.1", 8080, path).then((HttpClientRequest req) {
+  cl.get(host, port, path).then((HttpClientRequest req) {
     return req.close();
   }).then((HttpClientResponse resp) {
     resp.transform(new Utf8DecoderTransformer()).join().then(callback);
@@ -140,10 +175,10 @@ Future<String> parseBody(response) {
   return response.transform(new Utf8DecoderTransformer()).join();
 }
 
-void call(method, path, callback, {port:8080}) {
+void call(method, path, callback, {host:"127.0.0.1", port:8080}) {
   HttpClient cl = new HttpClient();
 
-  cl.open(method, "127.0.0.1", port, path).then((HttpClientRequest req) {
+  cl.open(method, host, port, path).then((HttpClientRequest req) {
     return req.close();
   }).then(callback);
 }
