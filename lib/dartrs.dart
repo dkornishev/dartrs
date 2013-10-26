@@ -8,7 +8,7 @@ import 'package:utf/utf.dart' show Utf8DecoderTransformer;
 import 'package:logging_handlers/server_logging_handlers.dart';
 
 part 'src/server.dart';
-part 'rsmeta.dart';
+part 'src/rsmeta.dart';
 
 /**
  * Starts a [RestfulServer] and returns a future.

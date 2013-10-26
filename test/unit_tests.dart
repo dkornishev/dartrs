@@ -174,24 +174,27 @@ void main() {
   
   group("Scanner", () {
     const _groupPort = 8082;
-    var server = new RestfulServer.fromScan(port: _groupPort);
+    new RestfulServer.fromScan()
+      ..listen(port: _groupPort).then((server) {
+        new Timer(new Duration(seconds:1), () => server.close());
+      });
     
     test("Not Found", () {
       call("GET", "/scan/not_there", expectAsync1((resp) {
         expect(resp.statusCode, equals(HttpStatus.NOT_FOUND));
-      }), port: 8081);
+      }), port: _groupPort);
     });
     
     test("GET", () {
       call("GET", "/scan/root", expectAsync1((resp) {
         expect(resp.statusCode, equals(HttpStatus.OK));
-      }), port: 8081);
+      }), port: _groupPort);
     });
     
     test("Post", () {
       call("POST", "/scan/post", expectAsync1((HttpClientResponse resp) {
         expect(resp.statusCode, equals(HttpStatus.CREATED));
-      }), port: 8081);
+      }), port: _groupPort);
     });
     
     test("Delete", () {
@@ -199,8 +202,6 @@ void main() {
         expect(resp.statusCode, equals(HttpStatus.NO_CONTENT));
       }));
     });
-
-    new Timer(new Duration(seconds:1), () => server.close());
   });
 }
 

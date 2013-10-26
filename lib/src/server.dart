@@ -5,7 +5,7 @@ part of dartrs;
  */
 class RestfulServer {
 
-  static final NOT_FOUND = new Endpoint("", "", (HttpRequest request, params) {
+  static final NOT_FOUND = new Endpoint("NOT_FOUND", "", (HttpRequest request, params) {
     request.response.statusCode = HttpStatus.NOT_FOUND;
     request.response.write("No handler for requested resource found");
   });
@@ -57,6 +57,50 @@ class RestfulServer {
   }
   
   /**
+   * Creates a new [RestfulServer].
+   * Registers endpoints based on annotations.
+   */
+  RestfulServer.fromScan() {
+    _scanInit();
+  }
+  
+  /**
+   * Scans for annotated methods and registers appropriate endpoints.
+   */
+  void _scanInit() {
+    var mirrors = currentMirrorSystem();
+    mirrors.libraries.forEach((_, LibraryMirror lib) {
+      lib.functions.values.forEach((MethodMirror method) {
+        
+        var verb = null;
+        var path = null;
+        method.metadata.forEach((InstanceMirror im) {
+          
+          if(im.reflectee is _HttpMethod) {
+            verb = im.reflectee.name;
+          }
+          
+          if(im.reflectee is Path) {
+            path = im.reflectee.path;
+          }
+        });
+        
+        if(verb != null && path !=null) {
+          if(method.parameters.length == 2) {
+            _endpoints.add(new Endpoint(verb, path, (request, uriParams)=>lib.invoke(method.simpleName, [request, uriParams]))); 
+            info("Added endpoint $verb:$path");
+          } else if(method.parameters.length == 3) {
+            _endpoints.add(new Endpoint(verb, path, (request, uriParams, body)=>lib.invoke(method.simpleName, [request, uriParams, body]))); 
+            info("Added endpoint $verb:$path");
+          } else {
+            error("Not adding annotated method ${method.simpleName} as it has wrong number of arguments (Must be 2 or 3)");  
+          }
+        }
+      });
+    });
+  }
+  
+  /**
    * Starts this server on the given host and port.
    */
   Future<RestfulServer> listen({String host:"127.0.0.1", int port:8080}) {
@@ -90,7 +134,7 @@ class RestfulServer {
       // Wrap to avoid mixing of sync and async errors..
       new Future.sync(() {
         // Pre-process
-        preProcessor(request);
+        preProcessor(request); // Could throw
         
         // Find and endpoint
         var endpoint = _endpoints.firstWhere((Endpoint e) => e.canService(request), orElse:() => NOT_FOUND);
