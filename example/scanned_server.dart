@@ -21,6 +21,6 @@ void main() {
   server
     ..contextScan()
     ..listen().then((server) {
-      print(server);
+      print("Future is here");
     });
 }

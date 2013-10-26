@@ -178,7 +178,7 @@ void main() {
     server
     ..contextScan()
     ..listen(port: _groupPort).then((server) {
-      print(server);
+      new Timer(new Duration(seconds:1), () => server.close());
     });
     
     test("Not Found", () {
@@ -204,9 +204,6 @@ void main() {
         expect(resp.statusCode, equals(HttpStatus.NO_CONTENT));
       }), port: _groupPort);
     });
-
-    
-    new Timer(new Duration(seconds:1), () => server.close());
   });
 }
 
