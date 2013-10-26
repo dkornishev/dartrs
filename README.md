@@ -9,16 +9,11 @@ Getting Started
 ---------------
 
 ```dart
-var server = new RestfulServer();
-server
-  ..onGet("/echo", (request, params) => request.response.write("ECHO"))
-  ..listen();
-```
-
-or
-
-```dart
-startrs().then((server) => server.onGet("/echo", (request, params) => request.response.write("ECHO")));
+RestfulServer.bind().then((server) {
+  server
+    ..onGet("/echo", (request, params) => request.response.write("ECHO"))
+    ..onPut("/put", (request, uriParams, body) => request.response.statusCode = HttpStatus.NO_CONTENT);
+});
 ```
 
 POST/PUT/PATCH will handle parsing the body if provided callback has three parameters
@@ -35,6 +30,13 @@ server.preProcessor = (request) {
   };
 ```
 
+Uri Parameters
+--------------
+Uri parameters, denoted by {} are automagically parsed and provided as second argument to the callback
+```dart
+  ..onGet("/api/{version}/{user}", (request, params) => request.response.write("Version ${params['version'} with user ${params['user'}"));
+```
+
 HTTPS (SSL/TLS)
 ---------------
 Good folks at google decided to go with NSS see (https://developer.mozilla.org/en-US/docs/NSS/Tools) 
@@ -42,11 +44,10 @@ and documentation on SecureSocket.initialize(..)
 Luckily, default tests have a functioning key pair, which have been appropriated for testing needs (test/pkcert)
 ```dart
 SecureSocket.initialize(database: "pkcert", password: 'dartdart', useBuiltinRoots: false);
-new RestfulServer()
-  ..onGet("/secure", (request, params) => request.response.write("SECURE"))
-  ..listenSecure(port: 8443, certificateName: "localhost_cert").then((server) {
-    print("I am sooo secure now");        
-  });
+RestfulServer.bindSecure(port: 8443, certificateName: "localhost_cert").then((server) {
+      server
+        ..onGet("/secure", (request, params) => request.response.write("SECURE"));
+});
 ```
 
 Annotations and Context Scan
@@ -59,13 +60,11 @@ void echo(request, params) {
   request.response.write("hi");
 }
 
-var server = new RestfulServer();
-server
-  ..contextScan()
-  ..listen(port: _groupPort).then((server) {
-      print("Endpoints are loaded from annotated methods.  Hoorah metadata.");
+RestfulServer.bind(host: "127.0.0.1", port: 8080).then((server) {
+  server
+    ..onGet("/mixed", (request, params) => request.response.write("I am all mixed up"))
+    ..contextScan();
   });
-
 ```
 
 Default Endpoints
