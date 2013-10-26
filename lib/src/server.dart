@@ -5,7 +5,7 @@ part of dartrs;
  */
 class RestfulServer {
 
-  static final NOT_FOUND = new Endpoint("", "", (HttpRequest request, params) {
+  static final NOT_FOUND = new Endpoint("NOT_FOUND", "", (HttpRequest request, params) {
     request.response.statusCode = HttpStatus.NOT_FOUND;
     request.response.write("No handler for requested resource found");
   });
@@ -116,7 +116,7 @@ class RestfulServer {
   
   /**
    *   
-   */
+  */
   void _logic(HttpServer server) {
     _server = server;
 
@@ -126,7 +126,8 @@ class RestfulServer {
       // Wrap to avoid mixing of sync and async errors..
       new Future.sync(() {
         // Pre-process
-        preProcessor(request);
+
+        preProcessor(request); // Could throw
         
         // Find and endpoint
         var endpoint = _endpoints.firstWhere((Endpoint e) => e.canService(request), orElse:() => NOT_FOUND);

@@ -1,14 +1,14 @@
 import 'dart:io';
 import 'dart:async' show Future, Timer;
+
 import 'package:utf/utf.dart' show Utf8DecoderTransformer;
 import 'package:dartrs/dartrs.dart';
 import 'package:unittest/unittest.dart';
-import "package:logging/logging.dart";
+import 'package:logging/logging.dart';
 import 'package:logging_handlers/server_logging_handlers.dart';
 import 'package:unittest/mock.dart';
 
-import "annotated_methods.dart";
-
+import 'annotated_methods.dart';
 
 class MockHttpRequest extends Mock implements HttpRequest {
   MockHttpRequest(String method, String uri) {
