@@ -10,6 +10,24 @@ class RestfulServer {
     request.response.write("No handler for requested resource found");
   });
 
+  /**
+   * Static method to create new restful servers
+   * This is more consistent stylistically with the sdk
+   */
+  static Future<RestfulServer> bind({String host:"127.0.0.1", int port:8080}) {
+    var server = new RestfulServer();
+    return server.listen(host: host, port: port);
+  }
+  
+  /**
+   * Static method to create new tls restful servers
+   * This is more consistent stylistically with the sdk
+   */
+  static Future<RestfulServer> bindSecure({String host:"127.0.0.1", int port:8443, String certificateName}) {
+    var server = new RestfulServer();
+    return server.listenSecure(host: host, port: port, certificateName: certificateName);
+  }
+  
   List<Endpoint> _endpoints = [];
   HttpServer _server;
   
