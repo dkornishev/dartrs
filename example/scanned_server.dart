@@ -17,5 +17,10 @@ void echoPost(request, params, body) {
 void main() {
   Logger.root.onRecord.listen(new PrintHandler());
 
-  var server = new RestfulServer.fromScan();
+  var server = new RestfulServer();
+  server
+    ..contextScan()
+    ..listen().then((server) {
+      print(server);
+    });
 }

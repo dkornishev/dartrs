@@ -9,4 +9,8 @@ dependencies:
   utf: any
 dev_dependencies:
   unittest: ">=0.8.5 <0.9.0"
+<<<<<<< HEAD
  
+=======
+ 
+>>>>>>> 8a1e7f6d0bb15c3cc49adf025c445dae0f2a5ee3
