@@ -18,7 +18,7 @@ RestfulServer.bind().then((server) {
 
 POST/PUT/PATCH will handle parsing the body if provided callback has three parameters
 ```dart
-..onPost("/post", (request, uriParams, body) => request.response.statusCode=HttpStatus.CREATED)   
+..onPost("/post", (request, uriParams, body) => request.response.statusCode = HttpStatus.CREATED)   
 ```
 Pre processing handler can be registed which will be invoked on every request
 ```dart
@@ -47,8 +47,8 @@ Luckily, default tests have a functioning key pair, which have been appropriated
 ```dart
 SecureSocket.initialize(database: "pkcert", password: 'dartdart', useBuiltinRoots: false);
 RestfulServer.bindSecure(port: 8443, certificateName: "localhost_cert").then((server) {
-      server
-        ..onGet("/secure", (request, params) => request.response.write("SECURE"));
+  server
+    ..onGet("/secure", (request, params) => request.response.write("SECURE"));
 });
 ```
 
