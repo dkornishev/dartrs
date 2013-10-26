@@ -18,7 +18,7 @@ RestfulServer.bind().then((server) {
 
 POST/PUT/PATCH will handle parsing the body if provided callback has three parameters
 ```dart
-  ..onPost("/post", (request, uriParams, body) => request.response.statusCode=HttpStatus.CREATED)   
+..onPost("/post", (request, uriParams, body) => request.response.statusCode=HttpStatus.CREATED)   
 ```
 Pre processing handler can be registed which will be invoked on every request
 ```dart
@@ -34,7 +34,9 @@ Uri Parameters
 --------------
 Uri parameters, denoted by {} are automagically parsed and provided as second argument to the callback
 ```dart
-  ..onGet("/api/{version}/{user}", (request, params) => request.response.write("Version ${params['version'} with user ${params['user'}"));
+..onGet("/api/{version}/{user}", (request, params) { 
+    request.response.write("Version ${params['version']} with user ${params['user']}"
+  }));
 ```
 
 HTTPS (SSL/TLS)
