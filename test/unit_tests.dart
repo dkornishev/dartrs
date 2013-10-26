@@ -51,11 +51,10 @@ void main() {
   group("TLS Server", () {
     SecureSocket.initialize(database: "test/pkcert", password: 'dartdart', useBuiltinRoots: false);
     
-    new RestfulServer()
-      ..onGet("/secure", (request, params) => request.response.write("SECURE"))
-      ..listenSecure(port: 8443, certificateName: "localhost_cert").then((server) {
-          new Timer(new Duration(seconds:1), () => server.close());
-        });
+    RestfulServer.bindSecure(port: 8443, certificateName: "localhost_cert").then((server) {
+      server..onGet("/secure", (request, params) => request.response.write("SECURE"));
+      new Timer(new Duration(seconds:1), () => server.close());
+    });
     
     test("TLS GET", () {
       getUri(Uri.parse("https://127.0.0.1:8443/secure"), expectAsync1((resp) {
@@ -69,18 +68,19 @@ void main() {
 
   group("Server", () {
     group("Basic Requests", () {
-      new RestfulServer()
-      ..onGet("/echo", (request, params) => request.response.write("ECHO"))
-      ..onGet("/api/{arg1}/{arg2}", (request, params) => request.response.write(params))
-      ..onHead("/head", (request, params) => request.response.headers.add("X-Test", "SUCCESS"))
-      ..onOptions("/options", (request, uriParams) => request.response.headers.add("X-Test-Options", "SUCCESS"))
-      ..onDelete("/delete", (request, uriParams) => request.response.statusCode = HttpStatus.NO_CONTENT)
-      ..onPatch("/patch", (request, uriParams, body) => request.response.statusCode = HttpStatus.NO_CONTENT)
-      ..onPost("/post", (request, uriParams, body) => request.response.statusCode = HttpStatus.CREATED)
-      ..onPut("/put", (request, uriParams, body) => request.response.statusCode = HttpStatus.NO_CONTENT)
-      ..listen().then((server) {
-          new Timer(new Duration(seconds:1), () => server.close());
-        });
+      RestfulServer.bind().then((server) {
+        server
+          ..onGet("/echo", (request, params) => request.response.write("ECHO"))
+          ..onGet("/api/{arg1}/{arg2}", (request, params) => request.response.write(params))
+          ..onHead("/head", (request, params) => request.response.headers.add("X-Test", "SUCCESS"))
+          ..onOptions("/options", (request, uriParams) => request.response.headers.add("X-Test-Options", "SUCCESS"))
+          ..onDelete("/delete", (request, uriParams) => request.response.statusCode = HttpStatus.NO_CONTENT)
+          ..onPatch("/patch", (request, uriParams, body) => request.response.statusCode = HttpStatus.NO_CONTENT)
+          ..onPost("/post", (request, uriParams, body) => request.response.statusCode = HttpStatus.CREATED)
+          ..onPut("/put", (request, uriParams, body) => request.response.statusCode = HttpStatus.NO_CONTENT);
+
+        new Timer(new Duration(seconds:1), () => server.close());
+      });
       
       test("Not Found", () {
         call("GET", "/not_there", expectAsync1((resp) {
@@ -154,13 +154,14 @@ void main() {
     
     group("Pre- and Postprocessor", () {
       const _groupPort = 8081;
-      new RestfulServer()
-        ..onPost("/post", (request, uriParams, body) => request.response.statusCode = HttpStatus.CREATED)
-        ..preProcessor = ((HttpRequest req) => req.response.headers.add("PP", true))
-        ..postProcessor = ((HttpRequest req) => req.response.headers.add("PP2", true))
-        ..listen(port:_groupPort).then((server) {
-          new Timer(new Duration(seconds:1), () => server.close());
-        });
+      RestfulServer.bind(port:_groupPort).then((server) {
+        server
+          ..onPost("/post", (request, uriParams, body) => request.response.statusCode = HttpStatus.CREATED)
+          ..preProcessor = ((HttpRequest req) => req.response.headers.add("PP", true))
+          ..postProcessor = ((HttpRequest req) => req.response.headers.add("PP2", true));
+
+        new Timer(new Duration(seconds:1), () => server.close());
+      });
       
       test("Header Modification", () {
         call("POST", "/post", expectAsync1((resp) {
@@ -174,10 +175,9 @@ void main() {
   
   group("Scanner", () {
     const _groupPort = 8082;
-    var server = new RestfulServer();
-    server
-    ..contextScan()
-    ..listen(port: _groupPort).then((server) {
+    RestfulServer.bind(port: _groupPort).then((server) {
+      server
+      ..contextScan();
       new Timer(new Duration(seconds:1), () => server.close());
     });
     

@@ -16,7 +16,7 @@ class RestfulServer {
    */
   static Future<RestfulServer> bind({String host:"127.0.0.1", int port:8080}) {
     var server = new RestfulServer();
-    return server.listen(host: host, port: port);
+    return server._listen(host: host, port: port);
   }
   
   /**
@@ -25,7 +25,7 @@ class RestfulServer {
    */
   static Future<RestfulServer> bindSecure({String host:"127.0.0.1", int port:8443, String certificateName}) {
     var server = new RestfulServer();
-    return server.listenSecure(host: host, port: port, certificateName: certificateName);
+    return server._listenSecure(host: host, port: port, certificateName: certificateName);
   }
   
   List<Endpoint> _endpoints = [];
@@ -77,7 +77,7 @@ class RestfulServer {
   /**
    * Starts this server on the given host and port.
    */
-  Future<RestfulServer> listen({String host:"127.0.0.1", int port:8080}) {
+  Future<RestfulServer> _listen({String host:"127.0.0.1", int port:8080}) {
     return HttpServer.bind(host, port).then((server) {
       info("Server listening on $host:$port...");  
       _logic(server);
@@ -88,7 +88,7 @@ class RestfulServer {
   /**
    * Starts this server on the given host and port (in secure mode).
    */
-  Future<RestfulServer> listenSecure({String host:"127.0.0.1", int port:8443, String certificateName}) {
+  Future<RestfulServer> _listenSecure({String host:"127.0.0.1", int port:8443, String certificateName}) {
     return HttpServer.bindSecure(host, port, certificateName: certificateName).then((server) {
       info("Server listening on $host:$port (secured)...");  
       _logic(server);
@@ -322,9 +322,4 @@ class Endpoint {
   }
   
   String toString() => '$_method $_path';
-}
-
-class ContentTypes {
-  static final APPLICATION_JSON =  new ContentType("application", "json", charset: "utf-8");
-  static final TEXT_PLAIN =  new ContentType("text", "plain", charset: "utf-8");
 }

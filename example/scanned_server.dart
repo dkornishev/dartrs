@@ -5,6 +5,7 @@ import 'package:logging_handlers/server_logging_handlers.dart';
 @GET
 @Path("/scan/root")
 void root(request, params) {
+  request.response.headers.contentType = ContentTypes.TEXT_PLAIN;
   request.response.write("ЭВРИКА");  
 }
 
@@ -17,10 +18,8 @@ void echoPost(request, params, body) {
 void main() {
   Logger.root.onRecord.listen(new PrintHandler());
 
-  var server = new RestfulServer();
-  server
-    ..contextScan()
-    ..listen().then((server) {
-      print("Future is here");
-    });
+  RestfulServer.bind().then((server) {
+    server
+      ..contextScan();
+  });
 }
