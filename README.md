@@ -34,6 +34,7 @@ server.preProcessor = (request) {
     old(request);
   };
 ```
+
 HTTPS (SSL/TLS)
 ---------------
 Good folks at google decided to go with NSS see (https://developer.mozilla.org/en-US/docs/NSS/Tools) 
@@ -41,29 +42,14 @@ and documentation on SecureSocket.initialize(..)
 Luckily, default tests have a functioning key pair, which have been appropriated for testing needs (test/pkcert)
 ```dart
 SecureSocket.initialize(database: "pkcert", password: 'dartdart', useBuiltinRoots: false);
-var server = new RestfulServer.secure(port: 8443, certificateName: "localhost_cert");
-```
-OR by scanning for annotated methods
-```dart
-SecureSocket.initialize(database: "pkcert", password: 'dartdart', useBuiltinRoots: false);
-var server = new RestfulServer.fromScanSecure(port: 8443, certificateName: "localhost_cert");
-```
-
-Logging
--------
-To see server messages you need to init logging_handlers
-```dart
-Logger.root.onRecord.listen(new PrintHandler());
+new RestfulServer()
+  ..onGet("/secure", (request, params) => request.response.write("SECURE"))
+  ..listenSecure(port: 8443, certificateName: "localhost_cert").then((server) {
+    print("I am sooo secure now");        
+  });
 ```
 
-Default Endpoints
------------------
-By default the server will list all registered endpoints if you issue:
-```
-OPTIONS /
-```
-
-Annotations/Scanner
+Annotations and Context Scan
 -------------------
 Jaxrs-style annotations and bootstrap via a library scanner:
 ```dart
@@ -73,5 +59,26 @@ void echo(request, params) {
   request.response.write("hi");
 }
 
-var server = new RestfulServer.fromScan();
+var server = new RestfulServer();
+server
+  ..contextScan()
+  ..listen(port: _groupPort).then((server) {
+      print("Endpoints are loaded from annotated methods.  Hoorah metadata.");
+  });
+
+```
+
+Default Endpoints
+-----------------
+By default the server will list all registered endpoints if you issue:
+```
+OPTIONS /
+```
+
+
+Logging
+-------
+To see server messages you need to init logging_handlers
+```dart
+Logger.root.onRecord.listen(new PrintHandler());
 ```
