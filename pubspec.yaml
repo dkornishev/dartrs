@@ -1,11 +1,11 @@
 name: dartrs
-version: 0.2.1
+version: 0.4.0
 author: Danil Kornishev <danil.kornishev@gmail.com>
 description: Simple Restful server implementation
 homepage: https://github.com/dkornishev/dartrs
 dependencies:
-  logging: ">=0.8.5 <0.9.0"
-  logging_handlers: any
-  utf: any
+  logging: '>=0.8.5 <0.9.0'
+  logging_handlers: 0.5.0+3
+  utf: 0.8.6
 dev_dependencies:
-  unittest: ">=0.8.5 <0.9.0"
+  unittest: '>=0.8.5 <0.9.0'
