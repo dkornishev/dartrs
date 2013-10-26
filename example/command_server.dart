@@ -17,7 +17,7 @@ import 'package:logging_handlers/server_logging_handlers.dart';
 void main() {
   Logger.root.onRecord.listen(new PrintHandler());
 
-  startrs().then((RestfulServer server) {
+  RestfulServer.bind().then((RestfulServer server) {
     server
     ..onPost("/cmd/{command}", (request, uriParams, body) {
       var parsed = JSON.decode(body);
