@@ -57,9 +57,7 @@ class RestfulServer {
   };  
 
   /**
-   * Creates a new [RestfulServer]. Start the server afterwards with
-   * `listen()` or `listenSecure()`.
-   * Also registers the default OPTIONS endpoint.
+   * Creates a new [RestfulServer] and registers the default OPTIONS endpoint.
    */
   RestfulServer() {
     var endpoint = new Endpoint.root("OPTIONS", (request, params) {
