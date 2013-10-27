@@ -1,5 +1,5 @@
 name: dartrs
-version: 0.4.0
+version: 0.4.1
 author: Danil Kornishev <danil.kornishev@gmail.com>
 description: Simple Restful server implementation
 homepage: https://github.com/dkornishev/dartrs

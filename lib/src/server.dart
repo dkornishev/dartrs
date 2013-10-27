@@ -31,6 +31,9 @@ class RestfulServer {
   List<Endpoint> _endpoints = [];
   HttpServer _server;
   
+  int numberIsolates = 1;
+  Function isolateInit;
+  
   /**
    * The global pre-processor.
    * 
@@ -136,34 +139,55 @@ class RestfulServer {
   void _logic(HttpServer server) {
     _server = server;
 
-    server.listen((HttpRequest request) {
-      Stopwatch sw = new Stopwatch()..start();
-      
-      // Wrap to avoid mixing of sync and async errors..
-      new Future.sync(() {
-        // Pre-process
+      //_server.listen(_handleRequest);
+      server.listen((request) {
+        SendPort sp = spawnFunction(isolateInit); 
+        
+        var bodyBox = new MessageBox();
+        var headerBox = new MessageBox();
+        
+        var message = {"bodySink" : bodyBox.sink, "headerSink" : headerBox.sink, "requestHeaders" : request.headers, "method" : request.method, "uri": request.uri,"responseHeaders" : request.response.headers};
+        sp.call(message).then((IsolateSink outSink) => request.listen((data) => outSink.add(data)).onDone(() => outSink.close()));
 
-        preProcessor(request); // Could throw
-        
-        // Find and endpoint
-        var endpoint = _endpoints.firstWhere((Endpoint e) => e.canService(request), orElse:() => NOT_FOUND);
-        info("Match: ${request.method}:${request.uri} to ${endpoint}");
-        
-        // Then post-process
-        return endpoint.service(request).then((_) => postProcessor(request));
-      })
-      // If an error occurred, handle it.
-      .catchError((e, stack) {
-        error("Server error: $e \n $stack");
-        onError(e, request);
-        })
-      // At the end, always close the request's response and log the request time.
-      .whenComplete(() {
-        request.response.close();
-        sw.stop();
-        info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
+        headerBox.stream.listen((HttpHeaders headers) {
+          headers.forEach((key, value) => request.response.headers.add(key, value));
+            request.response.headers.contentType = headers.contentType;
+          }).onDone(() => bodyBox.stream.pipe(request.response));
         });
+  }
+  
+  /**
+   * 
+   */
+  Future _handleRequest(request) {
+    Stopwatch sw = new Stopwatch()..start();
+    
+    // Wrap to avoid mixing of sync and async errors..
+    var future = new Future.sync(() {
+
+      // Pre-process
+      preProcessor(request); // Could throw
+      
+      // Find and endpoint
+      var endpoint = _endpoints.firstWhere((Endpoint e) => e.canService(request), orElse:() => NOT_FOUND);
+      info("Match: ${request.method}:${request.uri} to ${endpoint}");
+      
+      // Then post-process
+      return endpoint.service(request).then((_) => postProcessor(request));
+    })      
+    // If an error occurred, handle it.
+    .catchError((e, stack) {
+      error("Server error: $e \n $stack");
+      onError(e, request);
+    })
+    // At the end, always close the request's response and log the request time.
+    .whenComplete(() {
+      //request.response.close();
+      sw.stop();
+      info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
     });
+    
+    return future;
   }
   
   /**
@@ -287,11 +311,11 @@ class Endpoint {
   /**
    *  Replies if this endpoint can service incoming request
    */
-  bool canService(HttpRequest req) {
+  bool canService(req) {
     return _method == req.method.toUpperCase() && _uriMatch.hasMatch(req.uri.path);
   }
   
-  Future service(HttpRequest req) {
+  Future service(req) {
     // Wrap in Future.sync() to avoid mixing of sync and async errors.
     return new Future.sync(() {
       // Extract URI params
