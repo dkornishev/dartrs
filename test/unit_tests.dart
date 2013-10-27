@@ -152,13 +152,13 @@ void main() {
       });
     });
     
-    group("Pre- and Postprocessor", () {
+    group("Pre- and Postprocessor Sync", () {
       const _groupPort = 8081;
       RestfulServer.bind(port:_groupPort).then((server) {
         server
           ..onPost("/post", (request, uriParams, body) => request.response.statusCode = HttpStatus.CREATED)
-          ..preProcessor = ((HttpRequest req) => req.response.headers.add("PP", true))
-          ..postProcessor = ((HttpRequest req) => req.response.headers.add("PP2", true));
+          ..preProcessor = ((HttpRequest req) => req.response.headers.add("X-Pre", true))
+          ..postProcessor = ((HttpRequest req) => req.response.headers.add("X-Pre2", true));
 
         new Timer(new Duration(seconds:1), () => server.close());
       });
@@ -166,19 +166,150 @@ void main() {
       test("Header Modification", () {
         call("POST", "/post", expectAsync1((resp) {
           expect(resp.statusCode, equals(HttpStatus.CREATED));
-          expect(resp.headers.value("PP"), equals("true"));
-          expect(resp.headers.value("PP2"), equals("true"));
+          expect(resp.headers.value("X-Pre"), equals("true"));
+          expect(resp.headers.value("X-Pre2"), equals("true"));
+        }), port:_groupPort);
+      });
+    });
+    
+    group("Server Async 1", () {
+      const _groupPort = 8082;
+      RestfulServer.bind(port:_groupPort).then((server) {
+        server
+          // Sync handler
+          ..onGet("/get", (request, uriParams) {
+              request.response.headers.add("X-Test", "SUCCESS");
+              request.response.writeln("some data");
+            })
+          // Async pre-processor
+          ..preProcessor = ((HttpRequest req) {
+              // Simulate long pre-processing with possibility of throwing an exception.
+              return new Future.delayed(new Duration(milliseconds:300), () {
+                req.response.headers.add("X-Pre", "true");
+                if(req.uri.path.contains("failPre")) throw new StateError("Pre-processor exception.");
+              });
+            })
+          // Sync post-processor
+          ..postProcessor = ((HttpRequest req) {
+              if (req.uri.path.contains("failPost")) throw new StateError("Post-processor exception.");
+              req.response.writeln("some more data");
+            });
+
+        new Timer(new Duration(seconds:3), () => server.close());
+      });
+      
+      test("Delayed pre-processing", () {
+        call("GET", "/get", expectAsync1((resp) {
+          expect(resp.statusCode, equals(HttpStatus.OK));
+          expect(resp.headers.value("X-Pre"), equals("true"));
+          expect(resp.headers.value("X-Test"), equals("SUCCESS"));
+          parseBody(resp).then(expectAsync1((value) {
+            expect(value, contains("some data"));
+            expect(value, contains("some more data"));
+          }));
+        }), port:_groupPort);
+      });
+      
+      test("Pre-processing exception", () {
+        call("GET", "/get/failPre", expectAsync1((resp) {
+          expect(resp.statusCode, equals(HttpStatus.INTERNAL_SERVER_ERROR));
+          expect(resp.headers.value("X-Pre"), equals("true"));
+          expect(resp.headers.value("X-Test"), isNull);
+          parseBody(resp).then(expectAsync1((value) {
+            expect(value, contains("Pre-processor exception."));
+          }));
+        }), port:_groupPort);
+      });
+      
+      test("Post-processing exception", () {
+        call("GET", "/get/failPost", expectAsync1((resp) {
+          // HTTP status is immutable after content is written to response
+          //expect(resp.statusCode, equals(HttpStatus.INTERNAL_SERVER_ERROR));
+          expect(resp.headers.value("X-Pre"), equals("true"));
+          expect(resp.headers.value("X-Test"), equals("SUCCESS"));
+          parseBody(resp).then(expectAsync1((value) {
+            expect(value, contains("Post-processor exception."));
+            expect(value.contains("some more data"), isFalse);
+          }));
+        }), port:_groupPort);
+      });
+    });
+    
+    group("Server Async 2", () {
+      const _groupPort = 8083;
+      RestfulServer.bind(port:_groupPort).then((server) {
+        server
+          // Async handler
+          ..onGet("/get", (req, uriParams) {
+              return new Future.delayed(new Duration(milliseconds:200), () {
+                req.response.headers.add("X-Test", "SUCCESS");
+                req.response.writeln("some data");
+              });
+            })
+          // Sync pre-processor
+          ..preProcessor = ((HttpRequest req) {
+              // Simulate long pre-processing with possibility of throwing an exception.
+              // Why not calculate 10000! here? Should take a while!
+              var f = 1;
+              for (int i = 1; i < 10001; i++) {f*=i;};
+              req.response.headers.add("X-Pre", true);
+              if(req.uri.path.contains("failPre")) throw new StateError("Pre-processor exception.");
+            })
+          // Async post-processor
+          ..postProcessor = ((HttpRequest req) {
+              return new Future.delayed(new Duration(milliseconds:100), () {
+                if(req.uri.path.contains("failPost")) throw new StateError("Post-processor exception.");
+                req.response.writeln("some more data");
+              });
+            });
+
+        new Timer(new Duration(seconds:4), () => server.close());
+      });
+      
+      test("Delayed pre-processing", () {
+        call("GET", "/get", expectAsync1((resp) {
+          expect(resp.statusCode, equals(HttpStatus.OK));
+          expect(resp.headers.value("X-Pre"), equals("true"));
+          expect(resp.headers.value("X-Test"), equals("SUCCESS"));
+          parseBody(resp).then(expectAsync1((value) {
+            expect(value, contains("some data"));
+            expect(value, contains("some more data"));
+          }));
+        }), port:_groupPort);
+      });
+      
+      test("Pre-processing exception", () {
+        call("GET", "/get/failPre", expectAsync1((resp) {
+          expect(resp.statusCode, equals(HttpStatus.INTERNAL_SERVER_ERROR));
+          expect(resp.headers.value("X-Test"), isNull);
+          parseBody(resp).then(expectAsync1((value) {
+            expect(value, contains("Pre-processor exception."));
+          }));
+        }), port:_groupPort);
+      });
+      
+      test("Post-processing exception", () {
+        call("GET", "/get/failPost", expectAsync1((resp) {
+          // HTTP status is immutable after content is written to response
+          //expect(resp.statusCode, equals(HttpStatus.INTERNAL_SERVER_ERROR));
+          expect(resp.headers.value("X-Pre"), equals("true"));
+          expect(resp.headers.value("X-Test"), equals("SUCCESS"));
+          parseBody(resp).then(expectAsync1((value) {
+            print(value);
+            expect(value, contains("Post-processor exception."));
+            expect(value.contains("some more data"), isFalse);
+          }));
         }), port:_groupPort);
       });
     });
   });
   
   group("Scanner", () {
-    const _groupPort = 8082;
+    const _groupPort = 8084;
     RestfulServer.bind(port: _groupPort).then((server) {
       server
-      ..contextScan();
-      new Timer(new Duration(seconds:1), () => server.close());
+        ..contextScan();
+      new Timer(new Duration(seconds:5), () => server.close());
     });
     
     test("Not Found", () {
@@ -210,11 +341,11 @@ void main() {
 void get(path, callback, {host:"127.0.0.1", port:8080}) {
   HttpClient cl = new HttpClient();
 
-  cl.get(host, port, path).then((HttpClientRequest req) {
-    return req.close();
-  }).then((HttpClientResponse resp) {
-    resp.transform(new Utf8DecoderTransformer()).join().then(callback);
-  });
+  cl.get(host, port, path)
+    .then((HttpClientRequest req) => req.close())
+    .then((HttpClientResponse resp) {
+      parseBody(resp).then(callback);
+    });
 }
 
 Future<String> parseBody(response) {

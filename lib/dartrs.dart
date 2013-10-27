@@ -13,4 +13,5 @@ part 'src/rsmeta.dart';
 class ContentTypes {
   static final APPLICATION_JSON =  new ContentType("application", "json", charset: "utf-8");
   static final TEXT_PLAIN =  new ContentType("text", "plain", charset: "utf-8");
+  static final TEXT_HTML =  new ContentType("text", "html", charset: "utf-8");
 }
