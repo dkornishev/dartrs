@@ -7,7 +7,7 @@ class RestfulServer {
 
   static final NOT_FOUND = new Endpoint("NOT_FOUND", "", (HttpRequest request, params) {
     request.response.statusCode = HttpStatus.NOT_FOUND;
-    request.response.reasonPhrase = "No handler for requested resource found";
+    request.response.write("No handler for requested resource found");
   });
 
   /**
@@ -52,7 +52,6 @@ class RestfulServer {
    */
   Function onError = (e, request) {
     request.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
-    //request.response.reasonPhrase = e.toString();
     request.response.writeln(e.toString());
   };  
 
@@ -291,7 +290,7 @@ class Endpoint {
   /**
    *  Replies if this endpoint can service incoming request
    */
-  bool canService(HttpRequest req) {
+  bool canService(req) {
     return _method == req.method.toUpperCase() && _uriMatch.hasMatch(req.uri.path);
   }
   
@@ -299,7 +298,7 @@ class Endpoint {
    * Services the given [HttpRequest].
    * Always returns a Future.
    */
-  Future service(HttpRequest req) {
+  Future service(req) {
     // Wrap in Future.sync() to avoid mixing of sync and async errors.
     return new Future.sync(() {
       // Extract URI params
