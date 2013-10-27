@@ -7,7 +7,7 @@ class RestfulServer {
 
   static final NOT_FOUND = new Endpoint("NOT_FOUND", "", (HttpRequest request, params) {
     request.response.statusCode = HttpStatus.NOT_FOUND;
-    request.response.write("No handler for requested resource found");
+    request.response.reasonPhrase = "No handler for requested resource found";
   });
 
   /**
@@ -34,20 +34,16 @@ class RestfulServer {
   /**
    * The global pre-processor.
    * 
-   * Currently this method has to execute synchronously and should not
-   * return a future.
+   * This method may return a Future.
    */
-  Function preProcessor = (request) {
-    request.response.headers.add(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
-  };
+  Function preProcessor = (request) => request.response.headers.add(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
   
   /**
    * The global post-processor. Note that you should not try to modify
    * immutable headers here, which is the case if any output has already
    * been written to the response.
    * 
-   * Currently this method has to execute synchronously and should not
-   * return a future.
+   * This method may return a Future.
    */
   Function postProcessor = (request) {};
   
@@ -56,6 +52,7 @@ class RestfulServer {
    */
   Function onError = (e, request) {
     request.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+    //request.response.reasonPhrase = e.toString();
     request.response.writeln(e.toString());
   };  
 
@@ -140,31 +137,36 @@ class RestfulServer {
 
     server.listen((HttpRequest request) {
       Stopwatch sw = new Stopwatch()..start();
-      
-      // Wrap to avoid mixing of sync and async errors..
-      new Future.sync(() {
-        // Pre-process
 
-        preProcessor(request); // Could throw
-        
-        // Find and endpoint
-        var endpoint = _endpoints.firstWhere((Endpoint e) => e.canService(request), orElse:() => NOT_FOUND);
-        info("Match: ${request.method}:${request.uri} to ${endpoint}");
-        
-        // Then post-process
-        return endpoint.service(request).then((_) => postProcessor(request));
+      /*
+       * Since we're allowing sync and async processors, we have to wrap them into
+       * a Future.sync() to be able to chain them and properly handle exceptions.
+       * 
+       * Chain:
+       * Pre-process -> Service -> Post-Process
+       */
+      // 1. Pre-process
+      new Future.sync(() => preProcessor(request))
+      // 2. Then service
+      .then((_) {
+        Endpoint endpoint = _endpoints.firstWhere((Endpoint e) => e.canService(request), orElse:() => NOT_FOUND);
+        debug("Match: ${request.method}:${request.uri} to ${endpoint}");
+        return endpoint.service(request);
       })
-      // If an error occurred, handle it.
+      // 3. Then post-process
+      .then((_) => postProcessor(request))
+      // If an error occurred in the chain, handle it.
       .catchError((e, stack) {
-        error("Server error: $e \n $stack");
+        warn("Server error: $e");
+        debug(stack.toString());
         onError(e, request);
-        })
+      })
       // At the end, always close the request's response and log the request time.
       .whenComplete(() {
-        request.response.close();
+        request.response.close().then((resp) => info("Closed request to ${request.uri.path} with status ${resp.statusCode}.."));
         sw.stop();
         info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
-        });
+      });
     });
   }
   
@@ -258,6 +260,8 @@ class Endpoint {
 
   /**
    * Creates a new endpoint.
+   * 
+   * The handler may return a Future.
    */
   Endpoint(String method, this._path, this._handler): this._method = method.toUpperCase() {
     _uriParamNames = [];
@@ -279,7 +283,7 @@ class Endpoint {
     this._method = method.toUpperCase(),
     this._path = "/",
     this._uriMatch = new RegExp(r'(^$|^(/)$)') {
-    _parseBody = _hasMoreThan2Parameters(_handler);
+    this._parseBody = _hasMoreThan2Parameters(_handler);
   }
   
   bool _hasMoreThan2Parameters(handler) {
@@ -293,6 +297,10 @@ class Endpoint {
     return _method == req.method.toUpperCase() && _uriMatch.hasMatch(req.uri.path);
   }
   
+  /**
+   * Services the given [HttpRequest].
+   * Always returns a Future.
+   */
   Future service(HttpRequest req) {
     // Wrap in Future.sync() to avoid mixing of sync and async errors.
     return new Future.sync(() {
@@ -309,14 +317,9 @@ class Endpoint {
       debug("Got params: $uriParams");
       
       // Handle request
-      Future future = _parseBody ? req.transform(new Utf8DecoderTransformer()).join() : new Future.sync(() => null);
-    
-      return future.then((body) {
-        if(body != null) {
-          _handler(req, uriParams, body); // Could throw
-        } else {
-          _handler(req, uriParams); // Could throw
-        }      
+      if (!_parseBody) return _handler(req, uriParams);
+      return req.transform(new Utf8DecoderTransformer()).join().then((body) {
+        return _handler(req, uriParams, body); // Could throw (sync or async)
       });
     });
   }
