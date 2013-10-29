@@ -1,6 +1,4 @@
 import 'package:dartrs/dartrs.dart';
-import "package:logging/logging.dart";
-import 'package:logging_handlers/server_logging_handlers.dart';
 
 void main() {
   Logger.root.onRecord.listen(new PrintHandler());
@@ -13,7 +11,6 @@ void main() {
 }
 
 void concurrent() {
-  Logger.root.onRecord.listen(new PrintHandler());
 
   var server = new RestfulServer()
     ..onPost("/api/isolate", (request, params, body) {
