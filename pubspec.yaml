@@ -4,6 +4,7 @@ author: Danil Kornishev <danil.kornishev@gmail.com>
 description: Simple Restful server implementation
 homepage: https://github.com/dkornishev/dartrs
 dependencies:
+  log4dart: '>=0.8.7 <0.9.0'
   utf: '>=0.8.5 <0.9.0'
 dev_dependencies:
   unittest: '>=0.8.5 <0.9.0'
