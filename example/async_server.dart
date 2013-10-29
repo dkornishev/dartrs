@@ -1,8 +1,7 @@
 import 'dart:io';
 import 'dart:async' show Future;
 import 'package:dartrs/dartrs.dart';
-import 'package:logging/logging.dart';
-import 'package:logging_handlers/server_logging_handlers.dart' show PrintHandler;
+
 
 Stopwatch sw;
 
@@ -12,8 +11,6 @@ Stopwatch sw;
  * Any handler can return a Future if necessary.
  */
 void main() {
-  Logger.root.onRecord.listen(new PrintHandler());
-
   RestfulServer.bind().then((RestfulServer server) {
     server
       ..preProcessor = asyncPreProcessor

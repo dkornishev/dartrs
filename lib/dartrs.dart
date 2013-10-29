@@ -5,7 +5,7 @@ import 'dart:mirrors';
 import 'dart:async';
 
 import 'package:utf/utf.dart' show Utf8DecoderTransformer;
-import 'package:logging_handlers/server_logging_handlers.dart';
+import 'package:log4dart/log4dart.dart';
 
 part 'src/server.dart';
 part 'src/rsmeta.dart';

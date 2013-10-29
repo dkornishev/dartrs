@@ -5,6 +5,8 @@ part of dartrs;
  */
 class RestfulServer {
 
+  static final _log = LoggerFactory.getLoggerFor(RestfulServer);
+  
   static final NOT_FOUND = new Endpoint("NOT_FOUND", "", (HttpRequest request, params) {
     request.response.statusCode = HttpStatus.NOT_FOUND;
     request.response.write("No handler for requested resource found");
@@ -77,7 +79,7 @@ class RestfulServer {
    */
   Future<RestfulServer> _listen({String host:"127.0.0.1", int port:8080}) {
     return HttpServer.bind(host, port).then((server) {
-      info("Server listening on $host:$port...");  
+      _log.info("Server listening on $host:$port...");  
       _logic(server);
       return this;
     });
@@ -88,7 +90,7 @@ class RestfulServer {
    */
   Future<RestfulServer> _listenSecure({String host:"127.0.0.1", int port:8443, String certificateName}) {
     return HttpServer.bindSecure(host, port, certificateName: certificateName).then((server) {
-      info("Server listening on $host:$port (secured)...");  
+      _log.info("Server listening on $host:$port (secured)...");  
       _logic(server);
       return this;
     });
@@ -118,12 +120,12 @@ class RestfulServer {
         if(verb != null && path !=null) {
           if(method.parameters.length == 2) {
             _endpoints.add(new Endpoint(verb, path, (request, uriParams)=>lib.invoke(method.simpleName, [request, uriParams]))); 
-            info("Added endpoint $verb:$path");
+            _log.info("Added endpoint $verb:$path");
           } else if(method.parameters.length == 3) {
             _endpoints.add(new Endpoint(verb, path, (request, uriParams, body)=>lib.invoke(method.simpleName, [request, uriParams, body]))); 
-            info("Added endpoint $verb:$path");
+            _log.info("Added endpoint $verb:$path");
           } else {
-            error("Not adding annotated method ${method.simpleName} as it has wrong number of arguments (Must be 2 or 3)");  
+            _log.error("Not adding annotated method ${method.simpleName} as it has wrong number of arguments (Must be 2 or 3)");  
           }
         }
       });
@@ -151,22 +153,22 @@ class RestfulServer {
       // 2. Then service
       .then((_) {
         Endpoint endpoint = _endpoints.firstWhere((Endpoint e) => e.canService(request), orElse:() => NOT_FOUND);
-        debug("Match: ${request.method}:${request.uri} to ${endpoint}");
+        _log.debug("Match: ${request.method}:${request.uri} to ${endpoint}");
         return endpoint.service(request);
       })
       // 3. Then post-process
       .then((_) => postProcessor(request))
       // If an error occurred in the chain, handle it.
       .catchError((e, stack) {
-        warn("Server error: $e");
-        debug(stack.toString());
+        _log.warn("Server error: $e");
+        _log.debug(stack.toString());
         onError(e, request);
       })
       // At the end, always close the request's response and log the request time.
       .whenComplete(() {
-        request.response.close().then((resp) => debug("Closed request to ${request.uri.path} with status ${resp.statusCode}.."));
+        request.response.close().then((resp) => _info.debug("Closed request to ${request.uri.path} with status ${resp.statusCode}.."));
         sw.stop();
-        info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
+        _log.info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
       });
     });
   }
@@ -175,7 +177,7 @@ class RestfulServer {
    * Shuts down this server.
    */
   Future close() {
-    return _server.close().then((server) => info("Server is now stopped"));  
+    return _server.close().then((server) => _log.info("Server is now stopped"));  
   }
   
   /**
@@ -185,7 +187,7 @@ class RestfulServer {
   void onGet(String uri, handler(HttpRequest req, Map uriParams)) {
     _endpoints.add(new Endpoint("GET", uri, handler));
 
-    info("Added endpoint GET:$uri");
+    _log.info("Added endpoint GET:$uri");
   }
 
   /**
@@ -197,7 +199,7 @@ class RestfulServer {
   void onPost(String uri, handler) {
     _endpoints.add(new Endpoint("POST", uri, handler));
 
-    info("Added endpoint POST:$uri");
+    _log.info("Added endpoint POST:$uri");
   }
   
   /**
@@ -209,7 +211,7 @@ class RestfulServer {
   void onPut(String uri, handler) {
     _endpoints.add(new Endpoint("PUT", uri, handler));
 
-    info("Added endpoint PUT:$uri");
+    _log.info("Added endpoint PUT:$uri");
   }
   
   /**
@@ -221,25 +223,25 @@ class RestfulServer {
   void onPatch(String uri, handler) {
     _endpoints.add(new Endpoint("PATCH", uri, handler));
 
-    info("Added endpoint Patch:$uri");
+    _log.info("Added endpoint Patch:$uri");
   }
   
   void onDelete(String uri, handler(HttpRequest req, Map uriParams)) {
     _endpoints.add(new Endpoint("DELETE", uri, handler));
 
-    info("Added endpoint DELETE:$uri");
+    _log.info("Added endpoint DELETE:$uri");
   }
 
   void onHead(String uri, handler(HttpRequest req, Map uriParams)) {
     _endpoints.add(new Endpoint("HEAD", uri, handler));
 
-    info("Added endpoint HEAD:$uri");
+    _log.info("Added endpoint HEAD:$uri");
   }
 
   void onOptions(String uri, handler(HttpRequest req, Map uriParams)) {
     _endpoints.add(new Endpoint("OPTIONS", uri, handler));
 
-    info("Added endpoint OPTIONS:$uri");
+    _log.info("Added endpoint OPTIONS:$uri");
   }
 }
 
@@ -247,6 +249,8 @@ class RestfulServer {
  * Holds information about a restful endpoint
  */
 class Endpoint {
+
+  static final _log = LoggerFactory.getLoggerFor(Endpoint);
 
   static final URI_PARAM = new RegExp(r"{(\w+?)}");
 
@@ -315,7 +319,7 @@ class Endpoint {
         }
       }
       
-      debug("Got params: $uriParams");
+      _log.debug("Got params: $uriParams");
       
       // Handle request
       if (!_parseBody) return _handler(req, uriParams);

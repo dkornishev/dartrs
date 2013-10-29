@@ -4,8 +4,6 @@ import 'dart:async' show Future, Timer;
 import 'package:utf/utf.dart' show Utf8DecoderTransformer;
 import 'package:dartrs/dartrs.dart';
 import 'package:unittest/unittest.dart';
-import 'package:logging/logging.dart';
-import 'package:logging_handlers/server_logging_handlers.dart';
 import 'package:unittest/mock.dart';
 
 import 'annotated_methods.dart';
@@ -19,8 +17,6 @@ class MockHttpRequest extends Mock implements HttpRequest {
 class MockHttpResponse extends Mock implements HttpResponse {}
 
 void main() {
-  Logger.root.onRecord.listen(new PrintHandler());
-  
   group("Endpoint", () {
     test("Match Simple", () {
       Endpoint e = new Endpoint("get", "/test", (_) => null);
