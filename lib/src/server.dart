@@ -16,6 +16,15 @@ class RestfulServer {
    * Static method to create new restful servers
    * This is more consistent stylistically with the sdk
    */
+  static Future<RestfulServer> isolates({String host:"127.0.0.1", int port:8080}) {
+    var server = new RestfulServer();
+    return server._listen(host: host, port: port);
+  }
+
+  /**
+   * Static method to create new restful servers
+   * This is more consistent stylistically with the sdk
+   */
   static Future<RestfulServer> bind({String host:"127.0.0.1", int port:8080}) {
     var server = new RestfulServer();
     return server._listen(host: host, port: port);
@@ -128,47 +137,52 @@ class RestfulServer {
     });
   }
   
-  /**
-   *   
-  */
   void _logic(HttpServer server) {
     _server = server;
 
     server.listen((HttpRequest request) {
-      Stopwatch sw = new Stopwatch()..start();
+      var init = new ReceivePort();
+      _handle(request);
+    });
+  }
+/**
+   *
+  */
+
+  void  _handle(HttpRequest request) {
+    Stopwatch sw = new Stopwatch()..start();
 
       /*
        * Since we're allowing sync and async processors, we have to wrap them into
        * a Future.sync() to be able to chain them and properly handle exceptions.
-       * 
+       *
        * Chain:
        * Pre-process -> Service -> Post-Process
        */
-      // 1. Pre-process
-      new Future.sync(() => preProcessor(request))
-      // 2. Then service
-      .then((_) {
-        Endpoint endpoint = _endpoints.firstWhere((Endpoint e) => e.canService(request), orElse:() => NOT_FOUND);
-        _log.debug("Match: ${request.method}:${request.uri} to ${endpoint}");
-        return endpoint.service(request);
-      })
-      // 3. Then post-process
-      .then((_) => postProcessor(request))
-      // If an error occurred in the chain, handle it.
-      .catchError((e, stack) {
-        _log.warn("Server error: $e");
-        _log.debug(stack.toString());
-        onError(e, request);
-      })
-      // At the end, always close the request's response and log the request time.
-      .whenComplete(() {
-        request.response.close().then((resp) => _log.info("Closed request to ${request.uri.path} with status ${resp.statusCode}.."));
-        sw.stop();
-        _log.info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
-      });
+    // 1. Pre-process
+    new Future.sync(() => preProcessor(request))
+    // 2. Then service
+    .then((_) {
+      Endpoint endpoint = _endpoints.firstWhere((Endpoint e) => e.canService(request), orElse:() => NOT_FOUND);
+      _log.debug("Match: ${request.method}:${request.uri} to ${endpoint}");
+      return endpoint.service(request);
+    })
+    // 3. Then post-process
+    .then((_) => postProcessor(request))
+    // If an error occurred in the chain, handle it.
+    .catchError((e, stack) {
+      _log.warn("Server error: $e");
+      _log.debug(stack.toString());
+      onError(e, request);
+    })
+    // At the end, always close the request's response and log the request time.
+    .whenComplete(() {
+      request.response.close().then((resp) => _log.info("Closed request to ${request.uri.path} with status ${resp.statusCode}.."));
+      sw.stop();
+      _log.info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
     });
   }
-  
+
   /**
    * Shuts down this server.
    */

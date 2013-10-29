@@ -1,12 +1,14 @@
 library dartrs;
 
 import 'dart:io';
-import 'dart:mirrors';
 import 'dart:async';
+import 'dart:isolate';
+import 'dart:mirrors';
 
 import 'package:utf/utf.dart' show Utf8DecoderTransformer;
 import 'package:log4dart/log4dart.dart';
 
+part 'src/proxy.dart';
 part 'src/server.dart';
 part 'src/rsmeta.dart';
 
