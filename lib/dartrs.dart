@@ -6,7 +6,7 @@ import 'dart:async';
 import 'dart:isolate';
 
 import 'package:utf/utf.dart' show Utf8DecoderTransformer;
-import 'package:logging_handlers/server_logging_handlers.dart';
+import 'package:log4dart/log4dart.dart';
 
 part 'src/server.dart';
 part 'src/rsmeta.dart';
@@ -15,6 +15,7 @@ part 'src/proxy.dart';
 class ContentTypes {
   static final APPLICATION_JSON =  new ContentType("application", "json", charset: "utf-8");
   static final TEXT_PLAIN =  new ContentType("text", "plain", charset: "utf-8");
+  static final TEXT_HTML =  new ContentType("text", "html", charset: "utf-8");
 }
 
 void isolateLogic(RestfulServer server) {
@@ -53,5 +54,4 @@ void isolateLogic(RestfulServer server) {
 //    });
 
   });
-  
 }

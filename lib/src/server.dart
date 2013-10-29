@@ -5,6 +5,8 @@ part of dartrs;
  */
 class RestfulServer {
 
+  static final _log = LoggerFactory.getLoggerFor(RestfulServer);
+  
   static final NOT_FOUND = new Endpoint("NOT_FOUND", "", (HttpRequest request, params) {
     request.response.statusCode = HttpStatus.NOT_FOUND;
     request.response.write("No handler for requested resource found");
@@ -37,20 +39,16 @@ class RestfulServer {
   /**
    * The global pre-processor.
    * 
-   * Currently this method has to execute synchronously and should not
-   * return a future.
+   * This method may return a Future.
    */
-  Function preProcessor = (request) {
-    request.response.headers.add(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
-  };
+  Function preProcessor = (request) => request.response.headers.add(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
   
   /**
    * The global post-processor. Note that you should not try to modify
    * immutable headers here, which is the case if any output has already
    * been written to the response.
    * 
-   * Currently this method has to execute synchronously and should not
-   * return a future.
+   * This method may return a Future.
    */
   Function postProcessor = (request) {};
   
@@ -80,7 +78,7 @@ class RestfulServer {
    */
   Future<RestfulServer> _listen({String host:"127.0.0.1", int port:8080}) {
     return HttpServer.bind(host, port).then((server) {
-      info("Server listening on $host:$port...");  
+      _log.info("Server listening on $host:$port...");  
       _logic(server);
       return this;
     });
@@ -91,7 +89,7 @@ class RestfulServer {
    */
   Future<RestfulServer> _listenSecure({String host:"127.0.0.1", int port:8443, String certificateName}) {
     return HttpServer.bindSecure(host, port, certificateName: certificateName).then((server) {
-      info("Server listening on $host:$port (secured)...");  
+      _log.info("Server listening on $host:$port (secured)...");  
       _logic(server);
       return this;
     });
@@ -121,12 +119,12 @@ class RestfulServer {
         if(verb != null && path !=null) {
           if(method.parameters.length == 2) {
             _endpoints.add(new Endpoint(verb, path, (request, uriParams)=>lib.invoke(method.simpleName, [request, uriParams]))); 
-            info("Added endpoint $verb:$path");
+            _log.info("Added endpoint $verb:$path");
           } else if(method.parameters.length == 3) {
             _endpoints.add(new Endpoint(verb, path, (request, uriParams, body)=>lib.invoke(method.simpleName, [request, uriParams, body]))); 
-            info("Added endpoint $verb:$path");
+            _log.info("Added endpoint $verb:$path");
           } else {
-            error("Not adding annotated method ${method.simpleName} as it has wrong number of arguments (Must be 2 or 3)");  
+            _log.error("Not adding annotated method ${method.simpleName} as it has wrong number of arguments (Must be 2 or 3)");  
           }
         }
       });
@@ -139,52 +137,38 @@ class RestfulServer {
   void _logic(HttpServer server) {
     _server = server;
 
-      //_server.listen(_handleRequest);
-      server.listen((request) {
-        SendPort sp = spawnFunction(isolateInit); 
-        
-        var bodyBox = new MessageBox();
-        var headerBox = new MessageBox();
-        
-        var message = {"bodySink" : bodyBox.sink, "headerSink" : headerBox.sink, "requestHeaders" : request.headers, "method" : request.method, "uri": request.uri,"responseHeaders" : request.response.headers};
-        sp.call(message).then((IsolateSink outSink) => request.listen((data) => outSink.add(data)).onDone(() => outSink.close()));
+    server.listen((HttpRequest request) {
+      Stopwatch sw = new Stopwatch()..start();
 
-        headerBox.stream.listen((HttpHeaders headers) {
-          headers.forEach((key, value) => request.response.headers.add(key, value));
-            request.response.headers.contentType = headers.contentType;
-          }).onDone(() => bodyBox.stream.pipe(request.response));
-        });
-  }
-  
-  /**
-   * 
-   */
-  Future _handleRequest(request) {
-    Stopwatch sw = new Stopwatch()..start();
-    
-    // Wrap to avoid mixing of sync and async errors..
-    var future = new Future.sync(() {
-
-      // Pre-process
-      preProcessor(request); // Could throw
-      
-      // Find and endpoint
-      var endpoint = _endpoints.firstWhere((Endpoint e) => e.canService(request), orElse:() => NOT_FOUND);
-      info("Match: ${request.method}:${request.uri} to ${endpoint}");
-      
-      // Then post-process
-      return endpoint.service(request).then((_) => postProcessor(request));
-    })      
-    // If an error occurred, handle it.
-    .catchError((e, stack) {
-      error("Server error: $e \n $stack");
-      onError(e, request);
-    })
-    // At the end, always close the request's response and log the request time.
-    .whenComplete(() {
-      //request.response.close();
-      sw.stop();
-      info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
+      /*
+       * Since we're allowing sync and async processors, we have to wrap them into
+       * a Future.sync() to be able to chain them and properly handle exceptions.
+       * 
+       * Chain:
+       * Pre-process -> Service -> Post-Process
+       */
+      // 1. Pre-process
+      new Future.sync(() => preProcessor(request))
+      // 2. Then service
+      .then((_) {
+        Endpoint endpoint = _endpoints.firstWhere((Endpoint e) => e.canService(request), orElse:() => NOT_FOUND);
+        _log.debug("Match: ${request.method}:${request.uri} to ${endpoint}");
+        return endpoint.service(request);
+      })
+      // 3. Then post-process
+      .then((_) => postProcessor(request))
+      // If an error occurred in the chain, handle it.
+      .catchError((e, stack) {
+        _log.warn("Server error: $e");
+        _log.debug(stack.toString());
+        onError(e, request);
+      })
+      // At the end, always close the request's response and log the request time.
+      .whenComplete(() {
+        request.response.close().then((resp) => _log.info("Closed request to ${request.uri.path} with status ${resp.statusCode}.."));
+        sw.stop();
+        _log.info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
+      });
     });
     
     return future;
@@ -194,7 +178,7 @@ class RestfulServer {
    * Shuts down this server.
    */
   Future close() {
-    return _server.close().then((server) => info("Server is now stopped"));  
+    return _server.close().then((server) => _log.info("Server is now stopped"));  
   }
   
   /**
@@ -204,7 +188,7 @@ class RestfulServer {
   void onGet(String uri, handler(HttpRequest req, Map uriParams)) {
     _endpoints.add(new Endpoint("GET", uri, handler));
 
-    info("Added endpoint GET:$uri");
+    _log.info("Added endpoint GET:$uri");
   }
 
   /**
@@ -216,7 +200,7 @@ class RestfulServer {
   void onPost(String uri, handler) {
     _endpoints.add(new Endpoint("POST", uri, handler));
 
-    info("Added endpoint POST:$uri");
+    _log.info("Added endpoint POST:$uri");
   }
   
   /**
@@ -228,7 +212,7 @@ class RestfulServer {
   void onPut(String uri, handler) {
     _endpoints.add(new Endpoint("PUT", uri, handler));
 
-    info("Added endpoint PUT:$uri");
+    _log.info("Added endpoint PUT:$uri");
   }
   
   /**
@@ -240,25 +224,25 @@ class RestfulServer {
   void onPatch(String uri, handler) {
     _endpoints.add(new Endpoint("PATCH", uri, handler));
 
-    info("Added endpoint Patch:$uri");
+    _log.info("Added endpoint Patch:$uri");
   }
   
   void onDelete(String uri, handler(HttpRequest req, Map uriParams)) {
     _endpoints.add(new Endpoint("DELETE", uri, handler));
 
-    info("Added endpoint DELETE:$uri");
+    _log.info("Added endpoint DELETE:$uri");
   }
 
   void onHead(String uri, handler(HttpRequest req, Map uriParams)) {
     _endpoints.add(new Endpoint("HEAD", uri, handler));
 
-    info("Added endpoint HEAD:$uri");
+    _log.info("Added endpoint HEAD:$uri");
   }
 
   void onOptions(String uri, handler(HttpRequest req, Map uriParams)) {
     _endpoints.add(new Endpoint("OPTIONS", uri, handler));
 
-    info("Added endpoint OPTIONS:$uri");
+    _log.info("Added endpoint OPTIONS:$uri");
   }
 }
 
@@ -266,6 +250,8 @@ class RestfulServer {
  * Holds information about a restful endpoint
  */
 class Endpoint {
+
+  static final _log = LoggerFactory.getLoggerFor(Endpoint);
 
   static final URI_PARAM = new RegExp(r"{(\w+?)}");
 
@@ -280,6 +266,8 @@ class Endpoint {
 
   /**
    * Creates a new endpoint.
+   * 
+   * The handler may return a Future.
    */
   Endpoint(String method, this._path, this._handler): this._method = method.toUpperCase() {
     _uriParamNames = [];
@@ -301,7 +289,7 @@ class Endpoint {
     this._method = method.toUpperCase(),
     this._path = "/",
     this._uriMatch = new RegExp(r'(^$|^(/)$)') {
-    _parseBody = _hasMoreThan2Parameters(_handler);
+    this._parseBody = _hasMoreThan2Parameters(_handler);
   }
   
   bool _hasMoreThan2Parameters(handler) {
@@ -315,6 +303,10 @@ class Endpoint {
     return _method == req.method.toUpperCase() && _uriMatch.hasMatch(req.uri.path);
   }
   
+  /**
+   * Services the given [HttpRequest].
+   * Always returns a Future.
+   */
   Future service(req) {
     // Wrap in Future.sync() to avoid mixing of sync and async errors.
     return new Future.sync(() {
@@ -328,17 +320,12 @@ class Endpoint {
         }
       }
       
-      debug("Got params: $uriParams");
+      _log.debug("Got params: $uriParams");
       
       // Handle request
-      Future future = _parseBody ? req.transform(new Utf8DecoderTransformer()).join() : new Future.sync(() => null);
-    
-      return future.then((body) {
-        if(body != null) {
-          _handler(req, uriParams, body); // Could throw
-        } else {
-          _handler(req, uriParams); // Could throw
-        }      
+      if (!_parseBody) return _handler(req, uriParams);
+      return req.transform(new Utf8DecoderTransformer()).join().then((body) {
+        return _handler(req, uriParams, body); // Could throw (sync or async)
       });
     });
   }

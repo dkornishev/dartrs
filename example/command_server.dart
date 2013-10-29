@@ -3,8 +3,6 @@ library dartrs_example;
 import 'dart:mirrors';
 import 'dart:convert' show JSON;
 import 'package:dartrs/dartrs.dart';
-import 'package:logging/logging.dart';
-import 'package:logging_handlers/server_logging_handlers.dart';
 
 
 /**
@@ -15,8 +13,6 @@ import 'package:logging_handlers/server_logging_handlers.dart';
 * on the server's vm
 */
 void main() {
-  Logger.root.onRecord.listen(new PrintHandler());
-
   RestfulServer.bind().then((RestfulServer server) {
     server
     ..onPost("/cmd/{command}", (request, uriParams, body) {
