@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:async' show Future, Timer;
+import 'dart:convert';
 
-import 'package:utf/utf.dart' show Utf8DecoderTransformer;
 import 'package:dartrs/dartrs.dart';
 import 'package:unittest/unittest.dart';
 import 'package:unittest/mock.dart';
@@ -150,11 +150,13 @@ void main() {
     
     group("Pre- and Postprocessor Sync", () {
       const _groupPort = 8081;
+      RestfulServer _rs;
       RestfulServer.bind(port:_groupPort).then((server) {
+        _rs = server;
         server
           ..onPost("/post", (request, uriParams, body) => request.response.statusCode = HttpStatus.CREATED)
           ..preProcessor = ((HttpRequest req) => req.response.headers.add("X-Pre", true))
-          ..postProcessor = ((HttpRequest req) => req.response.headers.add("X-Pre2", true));
+          ..postProcessor = ((HttpRequest req) => req.response.headers.add("X-Post", true));
 
         new Timer(new Duration(seconds:1), () => server.close());
       });
@@ -163,12 +165,25 @@ void main() {
         call("POST", "/post", expectAsync1((resp) {
           expect(resp.statusCode, equals(HttpStatus.CREATED));
           expect(resp.headers.value("X-Pre"), equals("true"));
-          expect(resp.headers.value("X-Pre2"), equals("true"));
+          expect(resp.headers.value("X-Post"), equals("true"));
+        }), port:_groupPort);
+      });
+      
+      test("Processor chaining", () {
+        var pp = _rs.preProcessor;
+        _rs.preProcessor = (req) {
+          pp(req);
+          req.response.headers.set("X-Pre", false);
+        };
+        call("POST", "/post", expectAsync1((resp) {
+          expect(resp.statusCode, equals(HttpStatus.CREATED));
+          expect(resp.headers.value("X-Pre"), equals("false"));
+          expect(resp.headers.value("X-Post"), equals("true"));
         }), port:_groupPort);
       });
     });
     
-    group("Server Async 1", () {
+    group("Async Handling 1", () {
       const _groupPort = 8082;
       RestfulServer.bind(port:_groupPort).then((server) {
         server
@@ -231,7 +246,7 @@ void main() {
       });
     });
     
-    group("Server Async 2", () {
+    group("Async Handling 2", () {
       const _groupPort = 8083;
       RestfulServer.bind(port:_groupPort).then((server) {
         server
@@ -291,7 +306,6 @@ void main() {
           expect(resp.headers.value("X-Pre"), equals("true"));
           expect(resp.headers.value("X-Test"), equals("SUCCESS"));
           parseBody(resp).then(expectAsync1((value) {
-            print(value);
             expect(value, contains("Post-processor exception."));
             expect(value.contains("some more data"), isFalse);
           }));
@@ -345,7 +359,7 @@ void get(path, callback, {host:"127.0.0.1", port:8080}) {
 }
 
 Future<String> parseBody(response) {
-  return response.transform(new Utf8DecoderTransformer()).join();
+  return response.transform(new Utf8Decoder()).join();
 }
 
 void call(method, path, callback, {host:"127.0.0.1", port:8080}) {

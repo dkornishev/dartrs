@@ -3,8 +3,8 @@ library dartrs;
 import 'dart:io';
 import 'dart:mirrors';
 import 'dart:async';
+import 'dart:convert';
 
-import 'package:utf/utf.dart' show Utf8DecoderTransformer;
 import 'package:log4dart/log4dart.dart';
 
 part 'src/server.dart';
