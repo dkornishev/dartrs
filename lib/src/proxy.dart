@@ -45,11 +45,11 @@ class RestfulResponse implements HttpResponse {
   }
 
   void write(message) {
-    _outbound.send(encodeUtf8(message.toString()));
+    _outbound.send(UTF8.encode(message.toString()));
   }
 
   void writeln(message) {
-    _outbound.send(encodeUtf8(message.toString() + "\n"));
+    _outbound.send(UTF8.encode(message.toString() + "\n"));
   }
 
   void add(message) {

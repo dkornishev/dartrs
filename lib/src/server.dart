@@ -149,6 +149,9 @@ class RestfulServer {
     });
   }
 
+  /**
+  * Initializes isolates
+  */
   void _initIsolates() {
     Completer comp = new Completer();
     for (var i = isolates;i > 0 ;i--) {
@@ -168,6 +171,9 @@ class RestfulServer {
     return comp.future;
   }
 
+  /**
+  * Dispatches requests to worker isolates
+  */
   void _dispatch(request) {
     Future workerProvider;
     if(_workers.isEmpty) {
