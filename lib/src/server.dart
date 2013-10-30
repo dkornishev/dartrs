@@ -204,6 +204,7 @@ class RestfulServer {
           request.response.headers.contentType = response.headers.contentType;
 
           outBodyPort.takeWhile(_untilDone).pipe(request.response);
+          reply.close();
         }
       });
     });
