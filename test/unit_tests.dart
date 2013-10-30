@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:async' show Future, Timer;
+import 'dart:convert';
 
-import 'package:utf/utf.dart' show Utf8DecoderTransformer;
 import 'package:dartrs/dartrs.dart';
 import 'package:unittest/unittest.dart';
 import 'package:unittest/mock.dart';
@@ -359,7 +359,7 @@ void get(path, callback, {host:"127.0.0.1", port:8080}) {
 }
 
 Future<String> parseBody(response) {
-  return response.transform(new Utf8DecoderTransformer()).join();
+  return response.transform(new Utf8Decoder()).join();
 }
 
 void call(method, path, callback, {host:"127.0.0.1", port:8080}) {

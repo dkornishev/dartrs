@@ -56,7 +56,7 @@ class RestfulServer {
     try {
       request.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
     } on StateError catch (e) {
-      warn("Could not update status code: ${e.toString()}");
+      _log.warn("Could not update status code: ${e.toString()}");
     }
     request.response.writeln(e.toString());
   };  
@@ -166,7 +166,7 @@ class RestfulServer {
       })
       // At the end, always close the request's response and log the request time.
       .whenComplete(() {
-        request.response.close().then((resp) => _info.debug("Closed request to ${request.uri.path} with status ${resp.statusCode}.."));
+        request.response.close().then((resp) => _log.debug("Closed request to ${request.uri.path} with status ${resp.statusCode}.."));
         sw.stop();
         _log.info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
       });
@@ -323,7 +323,7 @@ class Endpoint {
       
       // Handle request
       if (!_parseBody) return _handler(req, uriParams);
-      return req.transform(new Utf8DecoderTransformer()).join().then((body) {
+      return req.transform(new Utf8Decoder()).join().then((body) {
         return _handler(req, uriParams, body); // Could throw (sync or async)
       });
     });
