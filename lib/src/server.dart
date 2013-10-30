@@ -29,13 +29,16 @@ class RestfulServer {
     var server = new RestfulServer();
     return server._listenSecure(host: host, port: port, certificateName: certificateName);
   }
-  
-  List<Endpoint> _endpoints = [];
-  HttpServer _server;
+
   int isolates = 1;
   Function isolateInit;
-  
-  /**
+
+  List<Endpoint> _endpoints = [];
+  HttpServer _server;
+  List<SendPort> _workers = [];
+  Random random = new math.Random();
+
+/**
    * The global pre-processor.
    * 
    * This method may return a Future.
@@ -134,37 +137,65 @@ class RestfulServer {
     _server = server;
 
     server.listen((HttpRequest request) {
+      if(this.isolateInit == null) {
+        _handle(request);
+      } else {
+        _dispatch(request);
+      }
+    });
+  }
+
+  void _initIsolates() {
+    Completer comp = new Completer();
+    for (var i = isolates;i > 0 ;i--) {
       var initPort = new ReceivePort();
-      Isolate.spawn(_isolateLogic, {"init" : isolateInit, "initPort":initPort.sendPort}).then((Isolate iss) {
+      Isolate.spawn(_isolateLogic, {
+          "init" : isolateInit, "initPort":initPort.sendPort
+      }).then((Isolate iss) {
         initPort.first.then((commandPort) {
-
-          var reply = new ReceivePort();
-          var outBodyPort = new ReceivePort();
-
-          var isolateRequest = new RestfulRequest.fromHttpRequest(request);
-          isolateRequest.response = new RestfulResponse.fromHttpResponse(request.response, outBodyPort.sendPort);
-
-          commandPort.send({"reply" : reply.sendPort, "request" : isolateRequest});
-
-          reply.listen((response) {
-            if(response is SendPort) {
-              request.listen((incoming) {
-                response.send(incoming);
-              }).onDone(() {
-                response.send(new _DoneEvent());
-              });
-            } else if(response is RestfulResponse) {
-              print("PROCESS RESPONSE");
-              response.headers.forEach((key, value) => request.response.headers.add(key, value));
-              request.response.statusCode = response.statusCode;
-              request.response.headers.contentType = response.headers.contentType;
-
-              outBodyPort.takeWhile(_untilDone).pipe(request.response);
-            }
-          });
+          _workers.add(commandPort);
+          if(!comp.isCompleted) {
+            comp.complete(commandPort);
+          }
         });
       });
-      //_handle(request);
+    }
+
+    return comp.future;
+  }
+
+  void _dispatch(request) {
+    Future workerProvider;
+    if(_workers.isEmpty) {
+      workerProvider = _initIsolates();
+    } else {
+      workerProvider = new Future.sync(() => _workers[random.nextInt(_workers.length-1)]);
+    }
+
+    workerProvider.then((commandPort) {
+      var reply = new ReceivePort();
+      var outBodyPort = new ReceivePort();
+
+      var isolateRequest = new RestfulRequest.fromHttpRequest(request);
+      isolateRequest.response = new RestfulResponse.fromHttpResponse(request.response, outBodyPort.sendPort);
+
+      commandPort.send({"reply" : reply.sendPort, "request" : isolateRequest});
+
+      reply.listen((response) {
+        if(response is SendPort) {
+          request.listen((incoming) {
+            response.send(incoming);
+          }).onDone(() {
+            response.send(new _DoneEvent());
+          });
+        } else if(response is RestfulResponse) {
+          response.headers.forEach((key, value) => request.response.headers.add(key, value));
+          request.response.statusCode = response.statusCode;
+          request.response.headers.contentType = response.headers.contentType;
+
+          outBodyPort.takeWhile(_untilDone).pipe(request.response);
+        }
+      });
     });
   }
 

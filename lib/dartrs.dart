@@ -2,6 +2,7 @@ library dartrs;
 
 import 'dart:io';
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:isolate';
 import 'dart:mirrors';
 
@@ -23,7 +24,6 @@ abstract class InitLogic {
 }
 
 void _isolateLogic(initMessage) {
-  print("Initializing isolate");
   var server = new RestfulServer();
   var init = initMessage["init"];
   init.call(server);
@@ -42,7 +42,6 @@ void _isolateLogic(initMessage) {
     request.inbound = inbound.takeWhile(_untilDone);
 
     server._handle(request).whenComplete(() {
-      print("Request COMPLETED");
       reply.send(request.response);
     });
   });
