@@ -74,6 +74,9 @@ Isolates
 There are currently some severe limitations on what can be sent across isolates
 Request and Response are proxies with limited functionality.
 
+You need to define a sub-class of InitLogic which defines a 'call'
+method that takes one argument.  Probably any class with 'call' method would do.
+
 ```dart
 void main() {
 
