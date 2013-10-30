@@ -69,6 +69,39 @@ RestfulServer.bind(host: "127.0.0.1", port: 8080).then((server) {
   });
 ```
 
+Isolates
+--------
+There are currently some severe limitations on what can be sent across isolates
+Request and Response are proxies with limited functionality.
+
+```dart
+void main() {
+
+  RestfulServer.bind().then((server) {
+    server
+    ..isolates=22
+    ..isolateInit = new MyInit();
+  });
+}
+
+class MyInit implements InitLogic {
+  call(RestfulServer server) {
+    print("initializing server");
+    server
+    ..onPost("/api/isolate", (request, params, body) {
+      request.response.statusCode = "777";
+      request.response.headers.add("X-TEST", "WORKS");
+      request.response.headers.contentType = ContentTypes.TEXT_PLAIN;
+      request.response.writeln("$body ${new DateTime.now()}");
+      request.response.writeln("Работает! | 作品 | práce");
+    })
+    ..onGet("/api/get", (request, params) {
+      request.response.writeln("GOT");
+    });
+  }
+}
+```
+
 Default Endpoints
 -----------------
 By default, the server will list all registered endpoints if you issue:
