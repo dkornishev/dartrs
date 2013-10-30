@@ -3,7 +3,7 @@ Dart Restful Webserver
 
 [![Build Status](https://drone.io/github.com/dkornishev/dartrs/status.png)](https://drone.io/github.com/dkornishev/dartrs/latest)
 
-A server to make development of restful webservices easy and fun
+A server to make development of ReSTful webservices easy and fun
 
 Getting Started
 ---------------
@@ -41,7 +41,7 @@ Uri parameters, denoted by {} are automagically parsed and provided as second ar
 
 HTTPS (SSL/TLS)
 ---------------
-Good folks at google decided to go with NSS see (https://developer.mozilla.org/en-US/docs/NSS/Tools) 
+The good folks at google decided to go with NSS see (https://developer.mozilla.org/en-US/docs/NSS/Tools) 
 and documentation on SecureSocket.initialize(..)
 Luckily, default tests have a functioning key pair, which have been appropriated for testing needs (test/pkcert)
 ```dart
@@ -71,7 +71,7 @@ RestfulServer.bind(host: "127.0.0.1", port: 8080).then((server) {
 
 Default Endpoints
 -----------------
-By default the server will list all registered endpoints if you issue:
+By default, the server will list all registered endpoints if you issue:
 ```
 OPTIONS /
 ```
@@ -79,7 +79,6 @@ OPTIONS /
 
 Logging
 -------
-To see server messages you need to init logging_handlers
-```dart
-Logger.root.onRecord.listen(new PrintHandler());
-```
+log4dart is used for logging on the server.
+
+See https://github.com/ltackmann/log4dart/blob/master/doc/Config.md for ways to configure

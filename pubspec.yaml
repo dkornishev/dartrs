@@ -5,6 +5,5 @@ description: Simple Restful server implementation
 homepage: https://github.com/dkornishev/dartrs
 dependencies:
   log4dart: '>=1.4.8 <1.5.0'
-  utf: '>=0.8.5 <0.9.0'
 dev_dependencies:
   unittest: '>=0.8.5 <0.9.0'

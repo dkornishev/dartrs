@@ -58,7 +58,11 @@ class RestfulServer {
    * The global error handler.
    */
   Function onError = (e, request) {
-    request.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+    try {
+      request.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+    } on StateError catch (e) {
+      _log.warn("Could not update status code: ${e.toString()}");
+    }
     request.response.writeln(e.toString());
   };  
 
@@ -389,7 +393,7 @@ class Endpoint {
       
       // Handle request
       if (!_parseBody) return _handler(req, uriParams);
-      return req.transform(new Utf8DecoderTransformer()).join().then((body) {
+      return req.transform(new Utf8Decoder()).join().then((body) {
         return _handler(req, uriParams, body); // Could throw (sync or async)
       });
     });

@@ -5,8 +5,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:isolate';
 import 'dart:mirrors';
-
-import 'package:utf/utf.dart' show Utf8DecoderTransformer, Utf8EncoderTransformer, encodeUtf8;
+import 'dart:convert';
 import 'package:log4dart/log4dart.dart';
 
 part 'src/proxy.dart';
