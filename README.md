@@ -79,7 +79,6 @@ OPTIONS /
 
 Logging
 -------
-To see server messages, you need to init logging_handlers
-```dart
-Logger.root.onRecord.listen(new PrintHandler());
-```
+log4dart is used for logging on the server.
+
+See https://github.com/ltackmann/log4dart/blob/master/doc/Config.md for ways to configure
