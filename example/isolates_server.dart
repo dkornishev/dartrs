@@ -6,7 +6,7 @@ void main() {
 
   RestfulServer.bind().then((server) {
     server
-    ..isolates=8
+    ..isolates=22
     ..isolateInit = new MyInit();
   });
 }
@@ -23,6 +23,7 @@ class MyInit implements InitLogic {
       request.response.writeln("Работает! | 作品 | práce");
     })
     ..onGet("/api/get", (request, params) {
+      while(true);
       request.response.writeln("GOT");
     });
   }
