@@ -1,8 +1,8 @@
 part of dartrs;
 
-class RestfulRequest extends HttpRequest {
+class RestfulRequest implements HttpRequest {
 
-  ReceivePort _inbound;
+  Stream inbound;
 
   String method;
   Uri uri;
@@ -12,10 +12,22 @@ class RestfulRequest extends HttpRequest {
 
   RestfulResponse response;
 
-  RestfulRequest(this._inbound);
+  RestfulRequest();
+
+  StreamTransformer transformer;
+
+  RestfulRequest.fromHttpRequest(HttpRequest request) {
+    method = request.method;
+    uri = request.uri;
+    headers = request.headers;
+  }
+
+  Stream transform(StreamTransformer<T, dynamic> streamTransformer) {
+    return streamTransformer.bind(inbound);
+  }
 
   StreamSubscription<List<int>> listen(void onData(List<int> event), {Function onError, void onDone(), bool cancelOnError}) {
-    return _inbound.listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+    return inbound.listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError);
   }
 }
 
@@ -24,25 +36,32 @@ class RestfulResponse implements HttpResponse {
   HttpHeaders headers;
   int statusCode;
 
-  RestfulResponse(this._outbound, this.headers);
+  RestfulResponse();
 
-  void write(String message) {
-    _outbound.add(message.codeUnits);
+  RestfulResponse.fromHttpResponse(HttpResponse response, SendPort outbound) {
+    this.headers = response.headers;
+    this.statusCode = response.statusCode;
+    this._outbound = outbound;
   }
 
-  void writeln(String message) {
-    _outbound.add(message.codeUnits);
+  void write(message) {
+    _outbound.send(encodeUtf8(message.toString()));
+  }
+
+  void writeln(message) {
+    _outbound.send(encodeUtf8(message.toString() + "\n"));
   }
 
   void add(message) {
-    _outbound.add(message);
+    _outbound.send(message);
   }
 
   void addError(errorEvent) {
-    _outbound.addError(errorEvent);
+    _outbound.send(errorEvent);
   }
 
-  void close() {
-    _outbound.close();
+  Future close() {
+    _outbound.send(new _DoneEvent());
+    return new Future.value(this);
   }
 }

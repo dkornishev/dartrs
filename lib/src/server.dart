@@ -16,15 +16,6 @@ class RestfulServer {
    * Static method to create new restful servers
    * This is more consistent stylistically with the sdk
    */
-  static Future<RestfulServer> isolates({String host:"127.0.0.1", int port:8080}) {
-    var server = new RestfulServer();
-    return server._listen(host: host, port: port);
-  }
-
-  /**
-   * Static method to create new restful servers
-   * This is more consistent stylistically with the sdk
-   */
   static Future<RestfulServer> bind({String host:"127.0.0.1", int port:8080}) {
     var server = new RestfulServer();
     return server._listen(host: host, port: port);
@@ -41,6 +32,8 @@ class RestfulServer {
   
   List<Endpoint> _endpoints = [];
   HttpServer _server;
+  int isolates = 1;
+  Function isolateInit;
   
   /**
    * The global pre-processor.
@@ -141,15 +134,44 @@ class RestfulServer {
     _server = server;
 
     server.listen((HttpRequest request) {
-      var init = new ReceivePort();
-      _handle(request);
+      var initPort = new ReceivePort();
+      Isolate.spawn(_isolateLogic, {"init" : isolateInit, "initPort":initPort.sendPort}).then((Isolate iss) {
+        initPort.first.then((commandPort) {
+
+          var reply = new ReceivePort();
+          var outBodyPort = new ReceivePort();
+
+          var isolateRequest = new RestfulRequest.fromHttpRequest(request);
+          isolateRequest.response = new RestfulResponse.fromHttpResponse(request.response, outBodyPort.sendPort);
+
+          commandPort.send({"reply" : reply.sendPort, "request" : isolateRequest});
+
+          reply.listen((response) {
+            if(response is SendPort) {
+              request.listen((incoming) {
+                response.send(incoming);
+              }).onDone(() {
+                response.send(new _DoneEvent());
+              });
+            } else if(response is RestfulResponse) {
+              print("PROCESS RESPONSE");
+              response.headers.forEach((key, value) => request.response.headers.add(key, value));
+              request.response.statusCode = response.statusCode;
+              request.response.headers.contentType = response.headers.contentType;
+
+              outBodyPort.takeWhile(_untilDone).pipe(request.response);
+            }
+          });
+        });
+      });
+      //_handle(request);
     });
   }
-/**
+
+  /**
    *
   */
-
-  void  _handle(HttpRequest request) {
+  Future _handle(HttpRequest request) {
     Stopwatch sw = new Stopwatch()..start();
 
       /*
@@ -160,13 +182,14 @@ class RestfulServer {
        * Pre-process -> Service -> Post-Process
        */
     // 1. Pre-process
-    new Future.sync(() => preProcessor(request))
+    var future = new Future.sync(() => preProcessor(request))
     // 2. Then service
     .then((_) {
       Endpoint endpoint = _endpoints.firstWhere((Endpoint e) => e.canService(request), orElse:() => NOT_FOUND);
       _log.debug("Match: ${request.method}:${request.uri} to ${endpoint}");
       return endpoint.service(request);
-    })
+    });
+    future
     // 3. Then post-process
     .then((_) => postProcessor(request))
     // If an error occurred in the chain, handle it.
@@ -181,6 +204,8 @@ class RestfulServer {
       sw.stop();
       _log.info("Call to ${request.method} ${request.uri} ended in ${sw.elapsedMilliseconds} ms");
     });
+
+    return future;
   }
 
   /**
