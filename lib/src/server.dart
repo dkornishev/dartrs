@@ -190,8 +190,8 @@ class RestfulServer {
       var reply = new ReceivePort();
       var outBodyPort = new ReceivePort();
 
-      var isolateRequest = new RestfulRequest.fromHttpRequest(request);
-      isolateRequest.response = new RestfulResponse.fromHttpResponse(request.response, outBodyPort.sendPort);
+      var isolateRequest = new IsolateRequest.fromHttpRequest(request);
+      isolateRequest.response = new IsolateResponse.fromHttpResponse(request.response, outBodyPort.sendPort);
 
       commandPort.send({"reply" : reply.sendPort, "request" : isolateRequest});
 
@@ -202,7 +202,7 @@ class RestfulServer {
           }).onDone(() {
             response.send(new _DoneEvent());
           });
-        } else if(response is RestfulResponse) {
+        } else if(response is IsolateResponse) {
           response.headers.forEach((key, value) => request.response.headers.add(key, value));
           request.response.statusCode = response.statusCode;
           request.response.headers.contentType = response.headers.contentType;

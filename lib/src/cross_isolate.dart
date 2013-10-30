@@ -1,6 +1,6 @@
 part of dartrs;
 
-class RestfulRequest implements HttpRequest {
+class IsolateRequest implements HttpRequest {
 
   Stream inbound;
 
@@ -10,13 +10,13 @@ class RestfulRequest implements HttpRequest {
 
   String parsedBody;
 
-  RestfulResponse response;
+  IsolateResponse response;
 
-  RestfulRequest();
+  IsolateRequest();
 
   StreamTransformer transformer;
 
-  RestfulRequest.fromHttpRequest(HttpRequest request) {
+  IsolateRequest.fromHttpRequest(HttpRequest request) {
     method = request.method;
     uri = request.uri;
     headers = request.headers;
@@ -31,14 +31,14 @@ class RestfulRequest implements HttpRequest {
   }
 }
 
-class RestfulResponse implements HttpResponse {
+class IsolateResponse implements HttpResponse {
   SendPort _outbound;
   HttpHeaders headers;
   int statusCode;
 
-  RestfulResponse();
+  IsolateResponse();
 
-  RestfulResponse.fromHttpResponse(HttpResponse response, SendPort outbound) {
+  IsolateResponse.fromHttpResponse(HttpResponse response, SendPort outbound) {
     this.headers = response.headers;
     this.statusCode = response.statusCode;
     this._outbound = outbound;

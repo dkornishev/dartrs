@@ -8,7 +8,7 @@ import 'dart:mirrors';
 import 'dart:convert';
 import 'package:log4dart/log4dart.dart';
 
-part 'src/proxy.dart';
+part 'src/cross_isolate.dart';
 part 'src/server.dart';
 part 'src/rsmeta.dart';
 
@@ -33,7 +33,7 @@ void _isolateLogic(initMessage) {
 
   command.listen((process) {
     var reply = process["reply"];
-    RestfulRequest request = process["request"];
+    IsolateRequest request = process["request"];
 
     var inbound = new ReceivePort();
     reply.send(inbound.sendPort);
