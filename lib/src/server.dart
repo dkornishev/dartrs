@@ -182,7 +182,7 @@ class RestfulServer {
       workerProvider = new Future.sync(() {
         var index = random.nextInt(_workers.length-1);
         _log.debug("Using worker # ${index}");
-        return _workers[random.nextInt(index)];
+        return _workers[index];
       });
     }
 
