@@ -77,6 +77,9 @@ Request and Response are proxies with limited functionality.
 You need to define a sub-class of InitLogic which defines a 'call'
 method that takes one argument.  Probably any class with 'call' method would do.
 
+Keep in mind that since streams cannot be passed between isolates, some of the io
+happens on the main isolate
+
 ```dart
 void main() {
 
