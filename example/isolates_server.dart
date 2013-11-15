@@ -11,7 +11,7 @@ void main() {
   });
 }
 
-class MyInit implements InitLogic {
+class MyInit {
   call(RestfulServer server) {
     print("initializing server");
     server

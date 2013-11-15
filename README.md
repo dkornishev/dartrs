@@ -71,11 +71,10 @@ RestfulServer.bind(host: "127.0.0.1", port: 8080).then((server) {
 
 Isolates
 --------
-There are currently some severe limitations on what can be sent across isolates
+There are currently some strange limitations on what can be sent across isolates
 Request and Response are proxies with limited functionality.
 
-You need to define a sub-class of InitLogic which defines a 'call'
-method that takes one argument.  Probably any class with 'call' method would do.
+To init a multi-isolate server, a "functor" (a class with 'call' method) needs to be defined and passed in.
 
 Keep in mind that since streams cannot be passed between isolates, some of the io
 happens on the main isolate
@@ -90,7 +89,7 @@ void main() {
   });
 }
 
-class MyInit implements InitLogic {
+class MyInit {
   call(RestfulServer server) {
     print("initializing server");
     server

@@ -18,10 +18,6 @@ class ContentTypes {
   static final TEXT_HTML =  new ContentType("text", "html", charset: "utf-8");
 }
 
-abstract class InitLogic {
-  void call(RestfulServer server);
-}
-
 void _isolateLogic(initMessage) {
   var server = new RestfulServer();
   var init = initMessage["init"];
