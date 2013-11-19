@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <title>ws</title>
+    <script>
+    	var connection = new WebSocket('ws://127.0.0.1:8080/ws');
+    	connection.onopen = function() {
+    	  console.log("Ура!!");
+    	  connection.send("Джаваскрипт!!!");
+    	}
+		connection.onmessage = function(e) {
+  	    	console.log(e.data);
+  	    	document.getElementById("data").innerHTML=data;
+  	  	}
+
+    </script>
+  </head>
+ 
+  <body>
+    <div id="data"></div>   
+
+  </body>
+</html>
