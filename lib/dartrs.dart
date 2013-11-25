@@ -68,3 +68,5 @@ class _DoneEvent {}
 bool _untilDone(event) {
   return !(event is _DoneEvent);
 }
+
+final _log = LoggerFactory.getLoggerFor(RestfulServer);

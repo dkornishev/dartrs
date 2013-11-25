@@ -5,8 +5,6 @@ part of dartrs;
  */
 class RestfulServer {
 
-  static final _log = LoggerFactory.getLoggerFor(RestfulServer);
-
   static final NOT_FOUND = new Endpoint("NOT_FOUND", "", (HttpRequest request, params) {
     request.response.statusCode = HttpStatus.NOT_FOUND;
     request.response.write("No handler for requested resource found");
@@ -345,24 +343,32 @@ class _WsHandler {
   var _wsHandlers = {};
 
   void handle(HttpRequest request, init) {
-    WebSocketTransformer.upgrade(request).then((WebSocket sws) {
-      SendPort inPort;
-      ReceivePort out = new ReceivePort();
-      Isolate.spawn(_wsLogic, {"path" : request.uri.path, "init" : init, "outPort": out.sendPort}).then((iss) {
-        out.listen((data) {
-          if(data is SendPort) {
-            inPort = data;
-            sws.listen((data) {
-              inPort.send(data);
-            }).onDone(() {
-              inPort.send(new _DoneEvent());
-            });
-          } else {
-            sws.add(data);
-          }
+
+    if(!_wsHandlers.containsKey(request.uri.path)) {
+      _log.error("No WS handler configured for path ${request.uri.path}");
+      request.response.statusCode = HttpStatus.NOT_FOUND;
+      request.response.write("No handler for path ${request.uri.path}");
+      request.response.close();
+    } else {
+      WebSocketTransformer.upgrade(request).then((WebSocket sws) {
+        SendPort inPort;
+        ReceivePort out = new ReceivePort();
+        Isolate.spawn(_wsLogic, {"path" : request.uri.path, "init" : init, "outPort": out.sendPort}).then((iss) {
+          out.listen((data) {
+            if(data is SendPort) {
+              inPort = data;
+              sws.listen((data) {
+                inPort.send(data);
+              }).onDone(() {
+                inPort.send(new _DoneEvent());
+              });
+            } else {
+              sws.add(data);
+            }
+          });
         });
       });
-    });
+    }
   }
 
   addHandler(String path,  handler) {
