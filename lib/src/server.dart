@@ -141,6 +141,7 @@ class RestfulServer {
 
     server.listen((HttpRequest request) {
       if(WebSocketTransformer.isUpgradeRequest(request)) {
+        isolateInit(this);
         _wsHandler.handle(request, isolateInit);
       }
       else if(this.isolateInit == null) {
