@@ -37,6 +37,7 @@ class RestfulServer {
   HttpServer _server;
   List<SendPort> _workers = [];
   math.Random random = new math.Random();
+  _WsHandler _wsHandler = new _WsHandler();
 
 /**
    * The global pre-processor.
@@ -141,7 +142,10 @@ class RestfulServer {
     _server = server;
 
     server.listen((HttpRequest request) {
-      if(this.isolateInit == null) {
+      if(WebSocketTransformer.isUpgradeRequest(request)) {
+        _wsHandler.handle(request, isolateInit);
+      }
+      else if(this.isolateInit == null) {
         _handle(request);
       } else {
         _dispatch(request);
@@ -152,7 +156,7 @@ class RestfulServer {
   /**
   * Initializes isolates
   */
-  void _initIsolates() {
+  Future _initIsolates() {
     Completer comp = new Completer();
     for (var i = isolates;i > 0 ;i--) {
       var initPort = new ReceivePort();
@@ -254,6 +258,10 @@ class RestfulServer {
     return future;
   }
 
+  _wsHandlerFor(path) {
+    return _wsHandler.findHandler(path);
+  }
+
   /**
    * Shuts down this server.
    */
@@ -323,6 +331,46 @@ class RestfulServer {
     _endpoints.add(new Endpoint("OPTIONS", uri, handler));
 
     _log.info("Added endpoint OPTIONS:$uri");
+  }
+
+  void onWs(String path, handler(data)) {
+    _wsHandler.addHandler(path, handler);
+
+    _log.info("Added endpoint WS:$path");
+  }
+}
+
+class _WsHandler {
+
+  var _wsHandlers = {};
+
+  void handle(HttpRequest request, init) {
+    WebSocketTransformer.upgrade(request).then((WebSocket sws) {
+      SendPort inPort;
+      ReceivePort out = new ReceivePort();
+      Isolate.spawn(_wsLogic, {"path" : request.uri.path, "init" : init, "outPort": out.sendPort}).then((iss) {
+        out.listen((data) {
+          if(data is SendPort) {
+            inPort = data;
+            sws.listen((data) {
+              inPort.send(data);
+            }).onDone(() {
+              inPort.send(new _DoneEvent());
+            });
+          } else {
+            sws.add(data);
+          }
+        });
+      });
+    });
+  }
+
+  addHandler(String path,  handler) {
+    _wsHandlers[path] = handler;
+  }
+
+  findHandler(String path) {
+    return _wsHandlers[path];
   }
 }
 

@@ -42,6 +42,27 @@ void _isolateLogic(initMessage) {
   });
 }
 
+void _wsLogic(initMessage) {
+  var server = new RestfulServer();
+  var init = initMessage["init"];
+  init(server);
+
+  var inPort = new ReceivePort();
+  SendPort outPort = initMessage["outPort"];
+  outPort.send(inPort.sendPort);
+
+  var path = initMessage["path"];
+  var handler = server._wsHandlerFor(path);
+  inPort.listen((data) {
+    if(data is _DoneEvent) {
+      inPort.close();
+    } else {
+      var resp = handler(data);
+      outPort.send(resp);
+    }
+  });
+}
+
 class _DoneEvent {}
 
 bool _untilDone(event) {
