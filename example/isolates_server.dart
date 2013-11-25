@@ -35,6 +35,7 @@ class MyInit {
     server
     ..onWs("/ws", (data) {
       print("WS: $data");
+      return "ACK $data";
     })
     ..onWs("/ws/sound", (data) {
       print("WS sound: $data");

@@ -1,4 +1,4 @@
-Dart Restful Webserver 
+Dart Restful Webserver
 ======================
 
 [![Build Status](https://drone.io/github.com/dkornishev/dartrs/status.png)](https://drone.io/github.com/dkornishev/dartrs/latest)
@@ -18,12 +18,12 @@ RestfulServer.bind().then((server) {
 
 POST/PUT/PATCH will handle parsing the body if provided callback has three parameters
 ```dart
-..onPost("/post", (request, uriParams, body) => request.response.statusCode = HttpStatus.CREATED)   
+..onPost("/post", (request, uriParams, body) => request.response.statusCode = HttpStatus.CREATED)
 ```
 Pre processing handler can be registed which will be invoked on every request
 ```dart
 var old = server.preProcessor;
-  
+
 server.preProcessor = (request) {
     request.response.headers.contentType = ContentTypes.APPLICATION_JSON;
     old(request);
@@ -34,14 +34,14 @@ Uri Parameters
 --------------
 Uri parameters, denoted by {} are automagically parsed and provided as second argument to the callback
 ```dart
-..onGet("/api/{version}/{user}", (request, params) { 
+..onGet("/api/{version}/{user}", (request, params) {
     request.response.write("Version ${params['version']} with user ${params['user']}"
   }));
 ```
 
 HTTPS (SSL/TLS)
 ---------------
-The good folks at google decided to go with NSS see (https://developer.mozilla.org/en-US/docs/NSS/Tools) 
+The good folks at google decided to go with NSS see (https://developer.mozilla.org/en-US/docs/NSS/Tools)
 and documentation on SecureSocket.initialize(..)
 Luckily, default tests have a functioning key pair, which have been appropriated for testing needs (test/pkcert)
 ```dart
@@ -98,13 +98,23 @@ class MyInit {
       request.response.headers.add("X-TEST", "WORKS");
       request.response.headers.contentType = ContentTypes.TEXT_PLAIN;
       request.response.writeln("$body ${new DateTime.now()}");
-      request.response.writeln("Работает! | 作品 | práce");
+      request.response.writeln("����������������! | ������ | pr��ce");
     })
     ..onGet("/api/get", (request, params) {
       request.response.writeln("GOT");
     });
   }
 }
+```
+
+Web Sockets
+-----------
+```dart
+server
+  ..onWs("/ws/echo", (data) {
+    print(data);
+    return "ACK $data";
+  });
 ```
 
 Default Endpoints
