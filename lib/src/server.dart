@@ -6,7 +6,7 @@ part of dartrs;
 class RestfulServer {
 
   static final _log = LoggerFactory.getLoggerFor(RestfulServer);
-  
+
   static final NOT_FOUND = new Endpoint("NOT_FOUND", "", (HttpRequest request, params) {
     request.response.statusCode = HttpStatus.NOT_FOUND;
     request.response.write("No handler for requested resource found");
@@ -20,7 +20,7 @@ class RestfulServer {
     var server = new RestfulServer();
     return server._listen(host: host, port: port);
   }
-  
+
   /**
    * Static method to create new tls restful servers
    * This is more consistent stylistically with the sdk
@@ -36,24 +36,24 @@ class RestfulServer {
   List<Endpoint> _endpoints = [];
   HttpServer _server;
   List<SendPort> _workers = [];
-  Random random = new math.Random();
+  math.Random random = new math.Random();
 
 /**
    * The global pre-processor.
-   * 
+   *
    * This method may return a Future.
    */
   Function preProcessor = (request) => request.response.headers.add(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
-  
+
   /**
    * The global post-processor. Note that you should not try to modify
    * immutable headers here, which is the case if any output has already
    * been written to the response.
-   * 
+   *
    * This method may return a Future.
    */
   Function postProcessor = (request) {};
-  
+
   /**
    * The global error handler.
    */
@@ -64,7 +64,7 @@ class RestfulServer {
       _log.warn("Could not update status code: ${e.toString()}");
     }
     request.response.writeln(e.toString());
-  };  
+  };
 
   /**
    * Creates a new [RestfulServer] and registers the default OPTIONS endpoint.
@@ -75,32 +75,32 @@ class RestfulServer {
         request.response.writeln("$e");
       });
     });
-    
+
     _endpoints.add(endpoint);
   }
-  
+
   /**
    * Starts this server on the given host and port.
    */
   Future<RestfulServer> _listen({String host:"127.0.0.1", int port:8080}) {
     return HttpServer.bind(host, port).then((server) {
-      _log.info("Server listening on $host:$port...");  
+      _log.info("Server listening on $host:$port...");
       _logic(server);
       return this;
     });
   }
-  
+
   /**
    * Starts this server on the given host and port (in secure mode).
    */
   Future<RestfulServer> _listenSecure({String host:"127.0.0.1", int port:8443, String certificateName}) {
     return HttpServer.bindSecure(host, port, certificateName: certificateName).then((server) {
-      _log.info("Server listening on $host:$port (secured)...");  
+      _log.info("Server listening on $host:$port (secured)...");
       _logic(server);
       return this;
     });
   }
-  
+
   /**
    * Performs a context scan and creates endpoints from annotated methods found
    */
@@ -108,35 +108,35 @@ class RestfulServer {
     var mirrors = currentMirrorSystem();
     mirrors.libraries.forEach((_, LibraryMirror lib) {
       lib.functions.values.forEach((MethodMirror method) {
-        
+
         var verb = null;
         var path = null;
         method.metadata.forEach((InstanceMirror im) {
-          
+
           if(im.reflectee is _HttpMethod) {
             verb = im.reflectee.name;
           }
-          
+
           if(im.reflectee is Path) {
             path = im.reflectee.path;
           }
         });
-        
+
         if(verb != null && path !=null) {
           if(method.parameters.length == 2) {
-            _endpoints.add(new Endpoint(verb, path, (request, uriParams)=>lib.invoke(method.simpleName, [request, uriParams]))); 
+            _endpoints.add(new Endpoint(verb, path, (request, uriParams)=>lib.invoke(method.simpleName, [request, uriParams])));
             _log.info("Added endpoint $verb:$path");
           } else if(method.parameters.length == 3) {
-            _endpoints.add(new Endpoint(verb, path, (request, uriParams, body)=>lib.invoke(method.simpleName, [request, uriParams, body]))); 
+            _endpoints.add(new Endpoint(verb, path, (request, uriParams, body)=>lib.invoke(method.simpleName, [request, uriParams, body])));
             _log.info("Added endpoint $verb:$path");
           } else {
-            _log.error("Not adding annotated method ${method.simpleName} as it has wrong number of arguments (Must be 2 or 3)");  
+            _log.error("Not adding annotated method ${method.simpleName} as it has wrong number of arguments (Must be 2 or 3)");
           }
         }
       });
     });
   }
-  
+
   void _logic(HttpServer server) {
     _server = server;
 
@@ -258,9 +258,9 @@ class RestfulServer {
    * Shuts down this server.
    */
   Future close() {
-    return _server.close().then((server) => _log.info("Server is now stopped"));  
+    return _server.close().then((server) => _log.info("Server is now stopped"));
   }
-  
+
   /**
    * Services GET calls
    * [handler] should take (HttpRequest, Map)
@@ -274,39 +274,39 @@ class RestfulServer {
   /**
    * Services POST calls
    * [handler] can take be either (HttpRequest, Map)
-   * or (HttpRequest, Map, body).  In latter case, 
-   * request body will be parsed and passed in 
+   * or (HttpRequest, Map, body).  In latter case,
+   * request body will be parsed and passed in
    */
   void onPost(String uri, handler) {
     _endpoints.add(new Endpoint("POST", uri, handler));
 
     _log.info("Added endpoint POST:$uri");
   }
-  
+
   /**
    * Services PUT calls
    * [handler] can take be either (HttpRequest, Map)
-   * or (HttpRequest, Map, body).  In latter case, 
-   * request body will be parsed and passed in 
+   * or (HttpRequest, Map, body).  In latter case,
+   * request body will be parsed and passed in
    */
   void onPut(String uri, handler) {
     _endpoints.add(new Endpoint("PUT", uri, handler));
 
     _log.info("Added endpoint PUT:$uri");
   }
-  
+
   /**
    * Services PATCH calls
    * [handler] can take be either (HttpRequest, Map)
-   * or (HttpRequest, Map, body).  In latter case, 
-   * request body will be parsed and passed in 
+   * or (HttpRequest, Map, body).  In latter case,
+   * request body will be parsed and passed in
    */
   void onPatch(String uri, handler) {
     _endpoints.add(new Endpoint("PATCH", uri, handler));
 
     _log.info("Added endpoint Patch:$uri");
   }
-  
+
   void onDelete(String uri, handler(HttpRequest req, Map uriParams)) {
     _endpoints.add(new Endpoint("DELETE", uri, handler));
 
@@ -341,26 +341,26 @@ class Endpoint {
 
   RegExp _uriMatch;
   List _uriParamNames = [];
-  
+
   bool _parseBody;
 
   /**
    * Creates a new endpoint.
-   * 
+   *
    * The handler may return a Future.
    */
   Endpoint(String method, this._path, this._handler): this._method = method.toUpperCase() {
     _uriParamNames = [];
-    
+
     String regexp = _path.replaceAllMapped(URI_PARAM, (Match m) {
       _uriParamNames.add(m.group(1));
       return r"(\w+)";
     });
-    
+
     _uriMatch = new RegExp(regexp);
     _parseBody = _hasMoreThan2Parameters(_handler);
   }
-  
+
   /**
    * Creates an endpoint for the root path.
    * Matches one `/` or an empty path.
@@ -371,7 +371,7 @@ class Endpoint {
     this._uriMatch = new RegExp(r'(^$|^(/)$)') {
     this._parseBody = _hasMoreThan2Parameters(_handler);
   }
-  
+
   bool _hasMoreThan2Parameters(handler) {
     return (reflect(handler) as ClosureMirror).function.parameters.length>2;
   }
@@ -382,7 +382,7 @@ class Endpoint {
   bool canService(req) {
     return _method == req.method.toUpperCase() && _uriMatch.hasMatch(req.uri.path);
   }
-  
+
   /**
    * Services the given [HttpRequest].
    * Always returns a Future.
@@ -399,9 +399,9 @@ class Endpoint {
           uriParams[_uriParamNames[i]] = group;
         }
       }
-      
+
       _log.debug("Got params: $uriParams");
-      
+
       // Handle request
       if (!_parseBody) return _handler(req, uriParams);
       return req.transform(new Utf8Decoder()).join().then((body) {
@@ -409,6 +409,6 @@ class Endpoint {
       });
     });
   }
-  
+
   String toString() => '$_method $_path';
 }
