@@ -14,8 +14,8 @@ class RestfulServer {
    * Static method to create new restful servers
    * This is more consistent stylistically with the sdk
    */
-  static Future<RestfulServer> bind({String host:"127.0.0.1", int port:8080}) {
-    var server = new RestfulServer();
+  static Future<RestfulServer> bind({String host:"127.0.0.1", int port:8080, Object init, int concurrency:1}) {
+    var server = _newServer(init, concurrency);
     return server._listen(host: host, port: port);
   }
 
@@ -23,13 +23,21 @@ class RestfulServer {
    * Static method to create new tls restful servers
    * This is more consistent stylistically with the sdk
    */
-  static Future<RestfulServer> bindSecure({String host:"127.0.0.1", int port:8443, String certificateName}) {
-    var server = new RestfulServer();
+  static Future<RestfulServer> bindSecure({String host:"127.0.0.1", int port:8443, Object init, int concurrency:1, String certificateName}) {
+    var server = _newServer(init, concurrency);
     return server._listenSecure(host: host, port: port, certificateName: certificateName);
   }
 
-  int isolates = 1;
-  Function isolateInit;
+  static _newServer(init, concurrencyLevel) {
+    var server = new RestfulServer();
+    server._concurrency = concurrencyLevel;
+    server._isolateInit = init;
+    
+    return server;
+  }
+
+  int _concurrency;
+  Function _isolateInit;
 
   List<Endpoint> _endpoints = [];
   HttpServer _server;
@@ -141,10 +149,10 @@ class RestfulServer {
 
     server.listen((HttpRequest request) {
       if(WebSocketTransformer.isUpgradeRequest(request)) {
-        isolateInit(this);
-        _wsHandler.handle(request, isolateInit);
+        _isolateInit(this);
+        _wsHandler.handle(request, _isolateInit);
       }
-      else if(this.isolateInit == null) {
+      else if(this._isolateInit == null) {
         _handle(request);
       } else {
         _dispatch(request);
@@ -157,10 +165,10 @@ class RestfulServer {
   */
   Future _initIsolates() {
     Completer comp = new Completer();
-    for (var i = isolates;i > 0 ;i--) {
+    for (var i = _concurrency;i > 0 ;i--) {
       var initPort = new ReceivePort();
       Isolate.spawn(_isolateLogic, {
-          "init" : isolateInit, "initPort":initPort.sendPort
+          "init" : _isolateInit, "initPort":initPort.sendPort
       }).then((Isolate iss) {
         initPort.first.then((commandPort) {
           _workers.add(commandPort);

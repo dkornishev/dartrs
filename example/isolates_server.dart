@@ -6,10 +6,8 @@ import 'dart:io';
 
 void main() {
 
-  RestfulServer.bind().then((server) {
-    server
-    ..isolates=8
-    ..isolateInit = new MyInit();
+  RestfulServer.bind(init:new MyInit(), concurrency: 8).then((server) {
+   
   });
 
   new Timer(new Duration(milliseconds: 200), () {

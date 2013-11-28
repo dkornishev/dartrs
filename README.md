@@ -71,21 +71,22 @@ RestfulServer.bind(host: "127.0.0.1", port: 8080).then((server) {
 
 Isolates
 --------
-There are currently some strange limitations on what can be sent across isolates
+There are currently some limitations on what can be sent across isolates
 Request and Response are proxies with limited functionality.
 
 To init a multi-isolate server, a "functor" (a class with 'call' method) needs to be defined and passed in.
 
 Keep in mind that since streams cannot be passed between isolates, some of the io
-happens on the main isolate
+happens on the main isolate, though in practice, that doesn't seem to effect things
+
+Isolates are NOT threads.  It is perfectly fine to have hundreds of isolates if logic
+of your application warrants it.
+
+If no init object is provided, all requests will handled on main isolate.
 
 ```dart
 void main() {
-
-  RestfulServer.bind().then((server) {
-    server
-    ..isolates=22
-    ..isolateInit = new MyInit();
+  RestfulServer.bind(init:new MyInit(), concurrency: 8).then((server) {
   });
 }
 
@@ -116,6 +117,9 @@ server
     return "ACK $data";
   });
 ```
+
+Websockets only work if server was initialized with init object (concurrency-ready)
+Each websocket will get its own isolate.
 
 Default Endpoints
 -----------------
